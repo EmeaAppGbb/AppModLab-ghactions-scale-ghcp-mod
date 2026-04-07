@@ -1,0 +1,105 @@
+# ============================================================================
+# 01-discover-repos.yml — Discovery Workflow
+# ============================================================================
+# Lists all repositories in the target GitHub organization, shows their
+# primary language, and outputs a summary table in the job summary.
+#
+# Repository variables:
+#   TARGET_ORG — GitHub organization to scan
+#
+# Secrets:
+#   GH_PAT — Personal Access Token with repo + org:read scopes
+# ============================================================================
+
+name: "01 · Discover Repos"
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_org:
+        description: "GitHub org to scan (overrides repo variable TARGET_ORG)"
+        required: false
+        type: string
+
+# Prevent duplicate discovery runs
+concurrency:
+  group: discover-repos-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  discover:
+    name: "List organization repositories"
+    runs-on: ubuntu-latest
+
+    env:
+      # Input takes precedence over the repo variable
+      ORG: ${{ inputs.target_org || vars.TARGET_ORG }}
+      GH_TOKEN: ${{ secrets.GH_PAT }}
+
+    steps:
+      # ── Validate inputs ────────────────────────────────────────────────
+      - name: Validate organization name
+        run: |
+          if [[ -z "$ORG" ]]; then
+            echo "::error::No target org specified. Set the TARGET_ORG repo variable or pass target_org input."
+            exit 1
+          fi
+          echo "🏢 Target organization: **$ORG**" >> "$GITHUB_STEP_SUMMARY"
+
+      # ── Fetch repo list via GitHub CLI ─────────────────────────────────
+      - name: List repos in organization
+        id: list
+        run: |
+          echo "📡 Fetching repositories for org: $ORG ..."
+
+          # Fetch repos as JSON — name, primary language, visibility, archived flag
+          gh repo list "$ORG" \
+            --json name,primaryLanguage,visibility,isArchived \
+            --limit 1000 \
+            --no-archived \
+            > repos.json
+
+          TOTAL=$(jq length repos.json)
+          echo "total=$TOTAL" >> "$GITHUB_OUTPUT"
+          echo "✅ Found $TOTAL non-archived repositories."
+
+      # ── Build summary table ────────────────────────────────────────────
+      - name: Generate summary table
+        run: |
+          TOTAL=${{ steps.list.outputs.total }}
+
+          {
+            echo ""
+            echo "## 📋 Repository Discovery — \`$ORG\`"
+            echo ""
+            echo "| # | Repository | Language | Visibility |"
+            echo "|---|-----------|----------|------------|"
+
+            # Iterate over repos and build markdown rows
+            jq -r 'sort_by(.name) | to_entries[] |
+              "| \(.key + 1) | \(.value.name) | \(.value.primaryLanguage.name // "—") | \(.value.visibility) |"
+            ' repos.json
+
+            echo ""
+            echo "---"
+            echo ""
+
+            # Language breakdown
+            echo "### 📊 Language Breakdown"
+            echo ""
+            echo "| Language | Count |"
+            echo "|----------|-------|"
+            jq -r '
+              group_by(.primaryLanguage.name // "Unknown")
+              | map({lang: .[0].primaryLanguage.name // "Unknown", count: length})
+              | sort_by(-.count)[]
+              | "| \(.lang) | \(.count) |"
+            ' repos.json
+
+            echo ""
+            echo "> **Total non-archived repos: $TOTAL**"
+            echo ""
+            echo "_Run at $(date -u '+%Y-%m-%d %H:%M UTC') by @${{ github.actor }}_"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          echo "📊 Summary written to job summary."

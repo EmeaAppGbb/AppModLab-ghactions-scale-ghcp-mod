@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 500" width="900" height="500">
+  <!-- Background -->
+  <rect width="900" height="500" fill="#0a0a0a" rx="4"/>
+
+  <!-- Title -->
+  <text x="450" y="38" text-anchor="middle" font-family="Courier New, Courier, monospace" font-size="17" fill="#00FF41" font-weight="bold">PIPELINE FLOW</text>
+  <text x="450" y="58" text-anchor="middle" font-family="Courier New, Courier, monospace" font-size="11" fill="#555555">GitHub Copilot Modernization at Scale</text>
+  <line x1="100" y1="72" x2="800" y2="72" stroke="#1a1a2e" stroke-width="1"/>
+
+  <!-- ═══════════════════ ROW 1 ═══════════════════ -->
+
+  <!-- Box 1: Fork Repo -->
+  <rect x="35" y="110" width="165" height="70" rx="6" fill="#1a1a2e" stroke="#00FF41" stroke-width="1.5"/>
+  <text x="117" y="140" text-anchor="middle" font-family="Courier New, Courier, monospace" font-size="10" fill="#00FF41" font-weight="bold">SETUP</text>
+  <text x="117" y="158" text-anchor="middle" font-family="Courier New, Courier, monospace" font-size="13" fill="#e0e0e0">Fork Repo</text>
+
+  <!-- Arrow 1 → 2 -->
+  <line x1="200" y1="145" x2="222" y2="145" stroke="#00d4ff" stroke-width="2"/>
+  <polygon points="222,140 232,145 222,150" fill="#00d4ff"/>
+
+  <!-- Box 2: Configure Variables -->
+  <rect x="232" y="110" width="175" height="70" rx="6" fill="#1a1a2e" stroke="#00FF41" stroke-width="1.5"/>
+  <text x="319" y="140" text-anchor="middle" font-family="Courier New, Courier, monospace" font-size="10" fill="#00FF41" font-weight="bold">SETUP</text>
+  <text x="319" y="158" text-anchor="middle" font-family="Courier New, Courier, monospace" font-size="13" fill="#e0e0e0">Configure Vars</text>
+
+  <!-- Arrow 2 → 3 -->
+  <line x1="407" y1="145" x2="422" y2="145" stroke="#00d4ff" stroke-width="2"/>
+  <polygon points="422,140 432,145 422,150" fill="#00d4ff"/>
+
+  <!-- Box 3: Phase 1 — Discovery -->
+  <rect x="432" y="110" width="180" height="70" rx="6" fill="#1a1a2e" stroke="#00FF41" stroke-width="1.5"/>
+  <text x="522" y="133" text-anchor="middle" font-family="Courier New, Courier, monospace" font-size="10" fill="#00FF41" font-weight="bold">PHASE 1</text>
+  <text x="522" y="152" text-anchor="middle" font-family="Courier New, Courier, monospace" font-size="13" fill="#e0e0e0">Discovery</text>
+  <text x="522" y="170" text-anchor="middle" font-family="Courier New, Courier, monospace" font-size="9" fill="#444444">01-discover-repos</text>
+
+  <!-- Arrow 3 → 4 -->
+  <line x1="612" y1="145" x2="627" y2="145" stroke="#00d4ff" stroke-width="2"/>
+  <polygon points="627,140 637,145 627,150" fill="#00d4ff"/>
+
+  <!-- Box 4: Phase 2 — Filter -->
+  <rect x="637" y="110" width="180" height="70" rx="6" fill="#1a1a2e" stroke="#00FF41" stroke-width="1.5"/>
+  <text x="727" y="133" text-anchor="middle" font-family="Courier New, Courier, monospace" font-size="10" fill="#00FF41" font-weight="bold">PHASE 2</text>
+  <text x="727" y="152" text-anchor="middle" font-family="Courier New, Courier, monospace" font-size="13" fill="#e0e0e0">Filter</text>
+  <text x="727" y="170" text-anchor="middle" font-family="Courier New, Courier, monospace" font-size="9" fill="#444444">02-filter-repos</text>
+
+  <!-- ═══════════════ S-CURVE CONNECTOR ═══════════════ -->
+  <path d="M 727,180 L 727,240 L 135,240 L 135,300" stroke="#00d4ff" stroke-width="2" fill="none" stroke-dasharray="6,3"/>
+  <polygon points="130,298 135,310 140,298" fill="#00d4ff"/>
+
+  <!-- ═══════════════════ ROW 2 ═══════════════════ -->
+
+  <!-- Box 5: Phase 3 — Assessment -->
+  <rect x="40" y="310" width="190" height="70" rx="6" fill="#1a1a2e" stroke="#00FF41" stroke-width="1.5"/>
+  <text x="135" y="333" text-anchor="middle" font-family="Courier New, Courier, monospace" font-size="10" fill="#00FF41" font-weight="bold">PHASE 3</text>
+  <text x="135" y="352" text-anchor="middle" font-family="Courier New, Courier, monospace" font-size="13" fill="#e0e0e0">Assessment</text>
+  <text x="135" y="370" text-anchor="middle" font-family="Courier New, Courier, monospace" font-size="9" fill="#444444">03-run-assessment</text>
+
+  <!-- Arrow 5 → 6 -->
+  <line x1="230" y1="345" x2="277" y2="345" stroke="#00d4ff" stroke-width="2"/>
+  <polygon points="277,340 287,345 277,350" fill="#00d4ff"/>
+
+  <!-- Box 6: Phase 4 — Create PR -->
+  <rect x="287" y="310" width="190" height="70" rx="6" fill="#1a1a2e" stroke="#00FF41" stroke-width="1.5"/>
+  <text x="382" y="333" text-anchor="middle" font-family="Courier New, Courier, monospace" font-size="10" fill="#00FF41" font-weight="bold">PHASE 4</text>
+  <text x="382" y="352" text-anchor="middle" font-family="Courier New, Courier, monospace" font-size="13" fill="#e0e0e0">Create PR</text>
+  <text x="382" y="370" text-anchor="middle" font-family="Courier New, Courier, monospace" font-size="9" fill="#444444">04-create-pr</text>
+
+  <!-- Arrow 6 → 7 -->
+  <line x1="477" y1="345" x2="524" y2="345" stroke="#00d4ff" stroke-width="2"/>
+  <polygon points="524,340 534,345 524,350" fill="#00d4ff"/>
+
+  <!-- Box 7: Review Results -->
+  <rect x="534" y="310" width="185" height="70" rx="6" fill="#1a1a2e" stroke="#00FF41" stroke-width="1.5"/>
+  <text x="626" y="338" text-anchor="middle" font-family="Courier New, Courier, monospace" font-size="10" fill="#00FF41" font-weight="bold">OUTPUT</text>
+  <text x="626" y="357" text-anchor="middle" font-family="Courier New, Courier, monospace" font-size="13" fill="#e0e0e0">Review Results</text>
+
+  <!-- Done indicator -->
+  <line x1="719" y1="345" x2="745" y2="345" stroke="#00FF41" stroke-width="2"/>
+  <rect x="745" y="332" width="58" height="26" rx="13" fill="#0a0a0a" stroke="#00FF41" stroke-width="1.5"/>
+  <text x="774" y="349" text-anchor="middle" font-family="Courier New, Courier, monospace" font-size="10" fill="#00FF41">DONE</text>
+
+  <!-- Footer notes -->
+  <text x="450" y="450" text-anchor="middle" font-family="Courier New, Courier, monospace" font-size="10" fill="#333333">Each phase is a separate GitHub Actions workflow</text>
+  <text x="450" y="468" text-anchor="middle" font-family="Courier New, Courier, monospace" font-size="10" fill="#333333">Batch mode available via 05-batch-assessment.yml</text>
+</svg>

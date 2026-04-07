@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 350" width="900" height="350">
+  <!-- Background -->
+  <rect width="900" height="350" fill="#0a0a0a" rx="4"/>
+
+  <!-- Title -->
+  <text x="450" y="33" text-anchor="middle" font-family="Courier New, Courier, monospace" font-size="17" fill="#00FF41" font-weight="bold">CONFIGURATION OVERVIEW</text>
+  <text x="450" y="51" text-anchor="middle" font-family="Courier New, Courier, monospace" font-size="11" fill="#555555">Repository variables and secrets that drive the pipeline</text>
+  <line x1="100" y1="63" x2="800" y2="63" stroke="#1a1a2e" stroke-width="1"/>
+
+  <!-- ═══════════════ LEFT: Config Sources ═══════════════ -->
+
+  <!-- Repository Variables box -->
+  <rect x="30" y="80" width="300" height="140" rx="6" fill="#1a1a2e" stroke="#00FF41" stroke-width="1.5"/>
+  <text x="180" y="102" text-anchor="middle" font-family="Courier New, Courier, monospace" font-size="11" fill="#00FF41" font-weight="bold">REPOSITORY VARIABLES</text>
+  <line x1="50" y1="110" x2="310" y2="110" stroke="#333333" stroke-width="1"/>
+  <text x="50" y="130" font-family="Courier New, Courier, monospace" font-size="11" fill="#e0e0e0">TARGET_ORG</text>
+  <text x="310" y="130" text-anchor="end" font-family="Courier New, Courier, monospace" font-size="9" fill="#444444">org to scan</text>
+  <text x="50" y="149" font-family="Courier New, Courier, monospace" font-size="11" fill="#e0e0e0">BLACKLIST_REPOS</text>
+  <text x="310" y="149" text-anchor="end" font-family="Courier New, Courier, monospace" font-size="9" fill="#444444">repos to skip</text>
+  <text x="50" y="168" font-family="Courier New, Courier, monospace" font-size="11" fill="#e0e0e0">TARGET_LANGUAGES</text>
+  <text x="310" y="168" text-anchor="end" font-family="Courier New, Courier, monospace" font-size="9" fill="#444444">java | dotnet</text>
+  <text x="50" y="187" font-family="Courier New, Courier, monospace" font-size="11" fill="#e0e0e0">MODERNIZE_MODEL</text>
+  <text x="310" y="187" text-anchor="end" font-family="Courier New, Courier, monospace" font-size="9" fill="#444444">LLM model</text>
+
+  <!-- Repository Secrets box -->
+  <rect x="30" y="240" width="300" height="70" rx="6" fill="#1a1a2e" stroke="#ff6b6b" stroke-width="1.5"/>
+  <text x="180" y="262" text-anchor="middle" font-family="Courier New, Courier, monospace" font-size="11" fill="#ff6b6b" font-weight="bold">REPOSITORY SECRETS</text>
+  <line x1="50" y1="270" x2="310" y2="270" stroke="#333333" stroke-width="1"/>
+  <text x="50" y="290" font-family="Courier New, Courier, monospace" font-size="11" fill="#e0e0e0">GH_PAT</text>
+  <text x="310" y="290" text-anchor="end" font-family="Courier New, Courier, monospace" font-size="9" fill="#444444">repo + org access</text>
+
+  <!-- ═══════════════ CENTER: Distribution Bus ═══════════════ -->
+
+  <line x1="450" y1="95" x2="450" y2="300" stroke="#00d4ff" stroke-width="3" stroke-opacity="0.3"/>
+
+  <!-- Arrow: Variables → Bus -->
+  <line x1="330" y1="150" x2="444" y2="150" stroke="#00d4ff" stroke-width="1.5"/>
+  <polygon points="444,146 450,150 444,154" fill="#00d4ff"/>
+
+  <!-- Arrow: Secrets → Bus -->
+  <line x1="330" y1="275" x2="444" y2="275" stroke="#00d4ff" stroke-width="1.5"/>
+  <polygon points="444,271 450,275 444,279" fill="#00d4ff"/>
+
+  <!-- ═══════════════ RIGHT: Workflows ═══════════════ -->
+
+  <text x="705" y="90" text-anchor="middle" font-family="Courier New, Courier, monospace" font-size="10" fill="#555555">WORKFLOWS</text>
+
+  <!-- W1: 01-discover-repos -->
+  <rect x="565" y="100" width="280" height="34" rx="5" fill="#1a1a2e" stroke="#00FF41" stroke-width="1.5"/>
+  <text x="705" y="122" text-anchor="middle" font-family="Courier New, Courier, monospace" font-size="11" fill="#e0e0e0">01-discover-repos.yml</text>
+
+  <!-- W2: 02-filter-repos -->
+  <rect x="565" y="146" width="280" height="34" rx="5" fill="#1a1a2e" stroke="#00FF41" stroke-width="1.5"/>
+  <text x="705" y="168" text-anchor="middle" font-family="Courier New, Courier, monospace" font-size="11" fill="#e0e0e0">02-filter-repos.yml</text>
+
+  <!-- W3: 03-run-assessment -->
+  <rect x="565" y="192" width="280" height="34" rx="5" fill="#1a1a2e" stroke="#00FF41" stroke-width="1.5"/>
+  <text x="705" y="214" text-anchor="middle" font-family="Courier New, Courier, monospace" font-size="11" fill="#e0e0e0">03-run-assessment.yml</text>
+
+  <!-- W4: 04-create-pr -->
+  <rect x="565" y="238" width="280" height="34" rx="5" fill="#1a1a2e" stroke="#00FF41" stroke-width="1.5"/>
+  <text x="705" y="260" text-anchor="middle" font-family="Courier New, Courier, monospace" font-size="11" fill="#e0e0e0">04-create-pr.yml</text>
+
+  <!-- W5: 05-batch-assessment -->
+  <rect x="565" y="284" width="280" height="34" rx="5" fill="#1a1a2e" stroke="#00FF41" stroke-width="1.5"/>
+  <text x="705" y="306" text-anchor="middle" font-family="Courier New, Courier, monospace" font-size="11" fill="#e0e0e0">05-batch-assessment.yml</text>
+
+  <!-- Arrows: Bus → Workflows -->
+  <line x1="456" y1="117" x2="559" y2="117" stroke="#00d4ff" stroke-width="1.5"/>
+  <polygon points="559,113 565,117 559,121" fill="#00d4ff"/>
+
+  <line x1="456" y1="163" x2="559" y2="163" stroke="#00d4ff" stroke-width="1.5"/>
+  <polygon points="559,159 565,163 559,167" fill="#00d4ff"/>
+
+  <line x1="456" y1="209" x2="559" y2="209" stroke="#00d4ff" stroke-width="1.5"/>
+  <polygon points="559,205 565,209 559,213" fill="#00d4ff"/>
+
+  <line x1="456" y1="255" x2="559" y2="255" stroke="#00d4ff" stroke-width="1.5"/>
+  <polygon points="559,251 565,255 559,259" fill="#00d4ff"/>
+
+  <line x1="456" y1="301" x2="559" y2="301" stroke="#00d4ff" stroke-width="1.5"/>
+  <polygon points="559,297 565,301 559,305" fill="#00d4ff"/>
+</svg>

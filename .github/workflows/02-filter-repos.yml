@@ -1,0 +1,169 @@
+# ============================================================================
+# 02-filter-repos.yml — Filter & Prepare Workflow
+# ============================================================================
+# Applies language and blacklist filters to the org's repos, producing a
+# curated list of repositories that would be targeted for modernization.
+#
+# Repository variables:
+#   TARGET_ORG        — GitHub organization to scan
+#   BLACKLIST_REPOS   — Comma-separated list of repo names to exclude
+#   TARGET_LANGUAGES  — Default language filter (java/dotnet/both)
+#
+# Secrets:
+#   GH_PAT — Personal Access Token with repo + org:read scopes
+# ============================================================================
+
+name: "02 · Filter & Prepare"
+
+on:
+  workflow_dispatch:
+    inputs:
+      language_filter:
+        description: "Language filter"
+        required: true
+        type: choice
+        options:
+          - java
+          - dotnet
+          - both
+        default: both
+      dry_run:
+        description: "Dry run — show what would be targeted without side effects"
+        required: false
+        type: boolean
+        default: true
+
+# Prevent duplicate filter runs
+concurrency:
+  group: filter-repos-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  filter:
+    name: "Filter repositories by language & blacklist"
+    runs-on: ubuntu-latest
+
+    env:
+      ORG: ${{ vars.TARGET_ORG }}
+      BLACKLIST: ${{ vars.BLACKLIST_REPOS }}
+      LANG_FILTER: ${{ inputs.language_filter || vars.TARGET_LANGUAGES || 'both' }}
+      DRY_RUN: ${{ inputs.dry_run }}
+      GH_TOKEN: ${{ secrets.GH_PAT }}
+
+    steps:
+      # ── Validate inputs ────────────────────────────────────────────────
+      - name: Validate organization name
+        run: |
+          if [[ -z "$ORG" ]]; then
+            echo "::error::No target org specified. Set the TARGET_ORG repo variable."
+            exit 1
+          fi
+          echo "🏢 Organization: $ORG"
+          echo "🔤 Language filter: $LANG_FILTER"
+          echo "🚫 Blacklist: ${BLACKLIST:-<none>}"
+          echo "🧪 Dry run: $DRY_RUN"
+
+      # ── Fetch all repos ────────────────────────────────────────────────
+      - name: List repos in organization
+        run: |
+          gh repo list "$ORG" \
+            --json name,primaryLanguage,visibility,isArchived \
+            --limit 1000 \
+            --no-archived \
+            > all_repos.json
+
+          echo "📦 Total repos fetched: $(jq length all_repos.json)"
+
+      # ── Apply language filter ──────────────────────────────────────────
+      - name: Apply language filter
+        run: |
+          # Build jq filter based on language selection
+          case "$LANG_FILTER" in
+            java)
+              FILTER='.primaryLanguage.name == "Java"'
+              ;;
+            dotnet)
+              # Match C#, F#, VB.NET — common .NET languages
+              FILTER='(.primaryLanguage.name == "C#") or (.primaryLanguage.name == "F#") or (.primaryLanguage.name == "Visual Basic .NET")'
+              ;;
+            both)
+              FILTER='(.primaryLanguage.name == "Java") or (.primaryLanguage.name == "C#") or (.primaryLanguage.name == "F#") or (.primaryLanguage.name == "Visual Basic .NET")'
+              ;;
+            *)
+              echo "::error::Unknown language filter: $LANG_FILTER"
+              exit 1
+              ;;
+          esac
+
+          jq --arg filter "$FILTER" "[ .[] | select($FILTER) ]" all_repos.json > lang_filtered.json
+          echo "🔤 Repos after language filter: $(jq length lang_filtered.json)"
+
+      # ── Apply blacklist filter ─────────────────────────────────────────
+      - name: Apply blacklist filter
+        run: |
+          if [[ -z "$BLACKLIST" ]]; then
+            echo "ℹ️  No blacklist configured — keeping all repos."
+            cp lang_filtered.json filtered.json
+          else
+            # Convert comma-separated blacklist into a jq array
+            BLACKLIST_JSON=$(echo "$BLACKLIST" | tr ',' '\n' | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//' | jq -R . | jq -s .)
+
+            jq --argjson bl "$BLACKLIST_JSON" \
+              '[ .[] | select(.name as $n | ($bl | index($n)) | not) ]' \
+              lang_filtered.json > filtered.json
+
+            REMOVED=$(( $(jq length lang_filtered.json) - $(jq length filtered.json) ))
+            echo "🚫 Blacklisted $REMOVED repo(s)."
+          fi
+
+          FINAL_COUNT=$(jq length filtered.json)
+          echo "✅ Final filtered count: $FINAL_COUNT"
+
+      # ── Generate summary ───────────────────────────────────────────────
+      - name: Generate summary table
+        run: |
+          TOTAL_ALL=$(jq length all_repos.json)
+          TOTAL_LANG=$(jq length lang_filtered.json)
+          TOTAL_FINAL=$(jq length filtered.json)
+
+          {
+            echo "## 🔍 Repository Filter Results — \`$ORG\`"
+            echo ""
+            if [[ "$DRY_RUN" == "true" ]]; then
+              echo "> ⚠️ **DRY RUN** — No changes will be made."
+              echo ""
+            fi
+            echo "| Stage | Count |"
+            echo "|-------|-------|"
+            echo "| Total repos in org | $TOTAL_ALL |"
+            echo "| After language filter (\`$LANG_FILTER\`) | $TOTAL_LANG |"
+            echo "| After blacklist exclusion | $TOTAL_FINAL |"
+            echo ""
+            echo "### 📋 Repos to be processed"
+            echo ""
+
+            if [[ "$TOTAL_FINAL" -eq 0 ]]; then
+              echo "> _No repos matched the current filters._"
+            else
+              echo "| # | Repository | Language |"
+              echo "|---|-----------|----------|"
+              jq -r 'sort_by(.name) | to_entries[] |
+                "| \(.key + 1) | \(.value.name) | \(.value.primaryLanguage.name // "—") |"
+              ' filtered.json
+            fi
+
+            echo ""
+
+            # Show blacklisted repos if any
+            if [[ -n "$BLACKLIST" ]]; then
+              echo "### 🚫 Blacklisted repos"
+              echo ""
+              echo "\`\`\`"
+              echo "$BLACKLIST"
+              echo "\`\`\`"
+              echo ""
+            fi
+
+            echo "---"
+            echo "_Run at $(date -u '+%Y-%m-%d %H:%M UTC') by @${{ github.actor }}_"
+          } >> "$GITHUB_STEP_SUMMARY"

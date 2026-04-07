@@ -1,0 +1,371 @@
+# ============================================================================
+# 05-batch-assessment.yml — Full Batch Run
+# ============================================================================
+# Orchestrates the full pipeline: discover repos → filter by language and
+# blacklist → assess each repo → create PRs.  Uses a matrix strategy with
+# max-parallel to respect rate limits.
+#
+# Repository variables:
+#   TARGET_ORG        — GitHub organization to scan
+#   BLACKLIST_REPOS   — Comma-separated list of repo names to exclude
+#   TARGET_LANGUAGES  — Default language filter (java/dotnet/both)
+#   MODERNIZE_MODEL   — (optional) LLM model for the modernize CLI
+#
+# Secrets:
+#   GH_PAT — Personal Access Token with repo + org:read scopes
+# ============================================================================
+
+name: "05 · Batch Assessment"
+
+on:
+  workflow_dispatch:
+    inputs:
+      language_filter:
+        description: "Language filter"
+        required: true
+        type: choice
+        options:
+          - java
+          - dotnet
+          - both
+        default: both
+      dry_run:
+        description: "Dry run — discover and filter only, do NOT run assessments"
+        required: false
+        type: boolean
+        default: true
+      max_repos:
+        description: "Maximum repos to process (safety limit)"
+        required: false
+        type: number
+        default: 5
+
+# Only one batch run at a time
+concurrency:
+  group: batch-assessment
+  cancel-in-progress: false
+
+jobs:
+  # ════════════════════════════════════════════════════════════════════════
+  # Phase 1 — Discover & Filter
+  # ════════════════════════════════════════════════════════════════════════
+  discover-and-filter:
+    name: "Discover & filter repos"
+    runs-on: ubuntu-latest
+
+    outputs:
+      matrix: ${{ steps.matrix.outputs.repos }}
+      count: ${{ steps.matrix.outputs.count }}
+
+    env:
+      ORG: ${{ vars.TARGET_ORG }}
+      BLACKLIST: ${{ vars.BLACKLIST_REPOS }}
+      LANG_FILTER: ${{ inputs.language_filter || vars.TARGET_LANGUAGES || 'both' }}
+      MAX_REPOS: ${{ inputs.max_repos }}
+      GH_TOKEN: ${{ secrets.GH_PAT }}
+
+    steps:
+      - name: Validate inputs
+        run: |
+          if [[ -z "$ORG" ]]; then
+            echo "::error::TARGET_ORG repo variable is not set."
+            exit 1
+          fi
+          echo "🏢 Organization: $ORG"
+          echo "🔤 Language filter: $LANG_FILTER"
+          echo "🚫 Blacklist: ${BLACKLIST:-<none>}"
+          echo "🔢 Max repos: $MAX_REPOS"
+
+      - name: Fetch and filter repos
+        id: matrix
+        run: |
+          # 1. Fetch all non-archived repos
+          gh repo list "$ORG" \
+            --json name,primaryLanguage \
+            --limit 1000 \
+            --no-archived \
+            > all_repos.json
+
+          echo "📦 Total repos: $(jq length all_repos.json)"
+
+          # 2. Apply language filter
+          case "$LANG_FILTER" in
+            java)
+              FILTER='.primaryLanguage.name == "Java"'
+              ;;
+            dotnet)
+              FILTER='(.primaryLanguage.name == "C#") or (.primaryLanguage.name == "F#") or (.primaryLanguage.name == "Visual Basic .NET")'
+              ;;
+            both)
+              FILTER='(.primaryLanguage.name == "Java") or (.primaryLanguage.name == "C#") or (.primaryLanguage.name == "F#") or (.primaryLanguage.name == "Visual Basic .NET")'
+              ;;
+          esac
+
+          jq "[ .[] | select($FILTER) ]" all_repos.json > lang_filtered.json
+          echo "🔤 After language filter: $(jq length lang_filtered.json)"
+
+          # 3. Apply blacklist
+          if [[ -n "$BLACKLIST" ]]; then
+            BLACKLIST_JSON=$(echo "$BLACKLIST" | tr ',' '\n' | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//' | jq -R . | jq -s .)
+            jq --argjson bl "$BLACKLIST_JSON" \
+              '[ .[] | select(.name as $n | ($bl | index($n)) | not) ]' \
+              lang_filtered.json > filtered.json
+          else
+            cp lang_filtered.json filtered.json
+          fi
+
+          echo "✅ After blacklist: $(jq length filtered.json)"
+
+          # 4. Apply max_repos safety limit
+          jq --argjson max "$MAX_REPOS" '.[0:$max]' filtered.json > final.json
+
+          # 5. Build the matrix JSON — a list of repo names
+          REPO_LIST=$(jq -c '[ .[].name ]' final.json)
+          COUNT=$(jq length final.json)
+
+          echo "repos=$REPO_LIST" >> "$GITHUB_OUTPUT"
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+
+          echo "🎯 Will process $COUNT repo(s): $REPO_LIST"
+
+      - name: Write discovery summary
+        run: |
+          COUNT=${{ steps.matrix.outputs.count }}
+
+          {
+            echo "## 📋 Batch Assessment — Discovery Phase"
+            echo ""
+            if [[ "${{ inputs.dry_run }}" == "true" ]]; then
+              echo "> ⚠️ **DRY RUN** — Assessments will NOT run."
+              echo ""
+            fi
+            echo "| Parameter | Value |"
+            echo "|-----------|-------|"
+            echo "| Organization | \`$ORG\` |"
+            echo "| Language filter | \`$LANG_FILTER\` |"
+            echo "| Blacklist | \`${BLACKLIST:-<none>}\` |"
+            echo "| Max repos | \`$MAX_REPOS\` |"
+            echo "| **Repos to process** | **$COUNT** |"
+            echo ""
+            echo "### 🎯 Target repos"
+            echo ""
+            echo "| # | Repository |"
+            echo "|---|-----------|"
+            jq -r 'to_entries[] | "| \(.key + 1) | \(.value.name) |"' final.json
+            echo ""
+            if [[ "${{ inputs.dry_run }}" == "true" ]]; then
+              echo "> Re-run with **dry_run: false** to execute assessments."
+            fi
+            echo ""
+            echo "_Run at $(date -u '+%Y-%m-%d %H:%M UTC') by @${{ github.actor }}_"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # ════════════════════════════════════════════════════════════════════════
+  # Phase 2 — Run Assessments (matrix job, skipped on dry run)
+  # ════════════════════════════════════════════════════════════════════════
+  assess:
+    name: "Assess ${{ matrix.repo }}"
+    needs: discover-and-filter
+    if: inputs.dry_run == false && needs.discover-and-filter.outputs.count > 0
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        repo: ${{ fromJson(needs.discover-and-filter.outputs.matrix) }}
+
+    env:
+      ORG: ${{ vars.TARGET_ORG }}
+      MODEL: ${{ vars.MODERNIZE_MODEL }}
+      GH_TOKEN: ${{ secrets.GH_PAT }}
+
+    steps:
+      - name: Install modernize CLI
+        run: |
+          echo "📦 Installing modernize CLI ..."
+          npm install -g @modernize/cli
+          echo "✅ Installed."
+
+      - name: Clone ${{ matrix.repo }}
+        run: |
+          gh repo clone "$ORG/${{ matrix.repo }}" target-repo
+          echo "✅ Cloned $ORG/${{ matrix.repo }}."
+
+      - name: Create ghcp-mod branch
+        working-directory: target-repo
+        run: |
+          if git ls-remote --heads origin ghcp-mod | grep -q ghcp-mod; then
+            git fetch origin ghcp-mod
+            git checkout ghcp-mod
+            echo "ℹ️  Checked out existing ghcp-mod branch."
+          else
+            git checkout -b ghcp-mod
+            echo "🆕 Created new ghcp-mod branch."
+          fi
+
+      - name: Run assessment
+        working-directory: target-repo
+        run: |
+          CMD="modernize assess --source . --output-path ./ghcp-mod-assessment --no-tty"
+          if [[ -n "$MODEL" ]]; then
+            CMD="$CMD --model $MODEL"
+          fi
+          echo "▶️ $CMD"
+          eval "$CMD"
+
+          if [[ ! -d ./ghcp-mod-assessment ]]; then
+            echo "::error::Assessment output not found!"
+            exit 1
+          fi
+          echo "✅ Assessment complete."
+
+      - name: Commit and push
+        working-directory: target-repo
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add ghcp-mod-assessment/
+          if git diff --cached --quiet; then
+            echo "ℹ️  No changes to commit."
+          else
+            git commit -m "🔍 Add GHCP modernization assessment
+
+          Automated assessment for $ORG/${{ matrix.repo }}.
+          Model: ${MODEL:-default}"
+          fi
+
+          git push origin ghcp-mod --force-with-lease
+          echo "✅ Pushed ghcp-mod branch."
+
+  # ════════════════════════════════════════════════════════════════════════
+  # Phase 3 — Create PRs (runs after all assessments complete)
+  # ════════════════════════════════════════════════════════════════════════
+  create-prs:
+    name: "Create PR for ${{ matrix.repo }}"
+    needs: [discover-and-filter, assess]
+    if: inputs.dry_run == false && needs.discover-and-filter.outputs.count > 0
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        repo: ${{ fromJson(needs.discover-and-filter.outputs.matrix) }}
+
+    env:
+      ORG: ${{ vars.TARGET_ORG }}
+      GH_TOKEN: ${{ secrets.GH_PAT }}
+
+    steps:
+      - name: Check for existing PR
+        id: check
+        run: |
+          EXISTING=$(gh pr list \
+            --repo "$ORG/${{ matrix.repo }}" \
+            --head ghcp-mod \
+            --base main \
+            --json url \
+            --jq '.[0].url // ""')
+
+          if [[ -n "$EXISTING" ]]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "url=$EXISTING" >> "$GITHUB_OUTPUT"
+            echo "ℹ️  PR already exists: $EXISTING"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create PR
+        id: create
+        if: steps.check.outputs.exists == 'false'
+        run: |
+          PR_TITLE="🔍 GHCP Modernization Assessment — ${{ matrix.repo }}"
+
+          PR_BODY="## 🔍 GHCP Modernization Assessment
+
+          This PR contains an automated modernization assessment for \`$ORG/${{ matrix.repo }}\`.
+
+          ### 📂 What's included
+          - Assessment report in \`ghcp-mod-assessment/\`
+
+          ### 📋 Next steps
+          1. Review the assessment findings
+          2. Run \`modernize plan create\` for a detailed migration plan
+          3. Prioritize quick wins vs. larger efforts
+          4. Merge or close as appropriate
+
+          ---
+          > 🤖 _Automated by GitHub Actions batch assessment pipeline._"
+
+          PR_URL=$(gh pr create \
+            --repo "$ORG/${{ matrix.repo }}" \
+            --title "$PR_TITLE" \
+            --body "$PR_BODY" \
+            --base main \
+            --head ghcp-mod)
+
+          echo "url=$PR_URL" >> "$GITHUB_OUTPUT"
+          echo "✅ PR created: $PR_URL"
+
+      - name: Add labels
+        if: steps.check.outputs.exists == 'false'
+        run: |
+          for LABEL in "ghcp-mod" "assessment"; do
+            gh label create "$LABEL" \
+              --repo "$ORG/${{ matrix.repo }}" \
+              --description "GHCP Modernization" \
+              --color "0E8A16" \
+              --force 2>/dev/null || true
+          done
+
+          PR_URL="${{ steps.create.outputs.url }}"
+          PR_NUMBER=$(basename "$PR_URL")
+          gh pr edit "$PR_NUMBER" \
+            --repo "$ORG/${{ matrix.repo }}" \
+            --add-label "ghcp-mod,assessment"
+
+      - name: Job summary
+        run: |
+          if [[ "${{ steps.check.outputs.exists }}" == "true" ]]; then
+            URL="${{ steps.check.outputs.url }}"
+            MSG="PR already existed"
+          else
+            URL="${{ steps.create.outputs.url }}"
+            MSG="PR created"
+          fi
+
+          {
+            echo "### ${{ matrix.repo }}"
+            echo "- **Status:** $MSG"
+            echo "- **PR:** [$URL]($URL)"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # ════════════════════════════════════════════════════════════════════════
+  # Phase 4 — Final Summary
+  # ════════════════════════════════════════════════════════════════════════
+  summary:
+    name: "Batch summary"
+    needs: [discover-and-filter, assess, create-prs]
+    if: always()
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Final summary
+        run: |
+          {
+            echo "## 🏁 Batch Assessment — Final Summary"
+            echo ""
+            echo "| Detail | Value |"
+            echo "|--------|-------|"
+            echo "| Dry run | \`${{ inputs.dry_run }}\` |"
+            echo "| Repos targeted | ${{ needs.discover-and-filter.outputs.count }} |"
+            echo "| Discovery | \`${{ needs.discover-and-filter.result }}\` |"
+            if [[ "${{ inputs.dry_run }}" == "false" ]]; then
+              echo "| Assessment | \`${{ needs.assess.result }}\` |"
+              echo "| PR creation | \`${{ needs.create-prs.result }}\` |"
+            fi
+            echo ""
+            echo "_Run at $(date -u '+%Y-%m-%d %H:%M UTC') by @${{ github.actor }}_"
+          } >> "$GITHUB_STEP_SUMMARY"

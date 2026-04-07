@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 80" width="400" height="80">
+  <title>Setup and Configuration</title>
+  <desc>Terminal-style badge for the Setup and Configuration section of GHCP Modernization</desc>
+  <defs>
+    <filter id="glowG" x="-10%" y="-20%" width="120%" height="140%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="b1"/>
+      <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="b2"/>
+      <feMerge>
+        <feMergeNode in="b2"/>
+        <feMergeNode in="b1"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <pattern id="sl" width="400" height="4" patternUnits="userSpaceOnUse">
+      <rect width="400" height="2" fill="transparent"/>
+      <rect y="2" width="400" height="2" fill="#000" opacity="0.12"/>
+    </pattern>
+    <linearGradient id="bgS" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#0d1117"/>
+      <stop offset="100%" stop-color="#0a0f14"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="400" height="80" rx="8" ry="8" fill="url(#bgS)"/>
+  <rect width="400" height="80" rx="8" ry="8" fill="none" stroke="#00d4ff" stroke-width="1.5" opacity="0.4"/>
+
+  <!-- Left accent bar (cyan for setup) -->
+  <rect x="0" y="16" width="4" height="48" rx="2" fill="#00d4ff" opacity="0.8"/>
+
+  <!-- Gear icon badge area -->
+  <rect x="18" y="18" width="44" height="44" rx="6" fill="#00d4ff" opacity="0.10"/>
+
+  <!-- Gear icon (geometric) -->
+  <g transform="translate(40, 40)" opacity="0.9">
+    <circle cx="0" cy="0" r="7" fill="none" stroke="#00d4ff" stroke-width="1.8"/>
+    <circle cx="0" cy="0" r="3" fill="none" stroke="#00d4ff" stroke-width="1.2"/>
+    <!-- Gear teeth -->
+    <line x1="0" y1="-11" x2="0" y2="-7" stroke="#00d4ff" stroke-width="3" stroke-linecap="round"/>
+    <line x1="0" y1="7" x2="0" y2="11" stroke="#00d4ff" stroke-width="3" stroke-linecap="round"/>
+    <line x1="-11" y1="0" x2="-7" y2="0" stroke="#00d4ff" stroke-width="3" stroke-linecap="round"/>
+    <line x1="7" y1="0" x2="11" y2="0" stroke="#00d4ff" stroke-width="3" stroke-linecap="round"/>
+    <line x1="-8" y1="-8" x2="-5" y2="-5" stroke="#00d4ff" stroke-width="3" stroke-linecap="round"/>
+    <line x1="5" y1="5" x2="8" y2="8" stroke="#00d4ff" stroke-width="3" stroke-linecap="round"/>
+    <line x1="5" y1="-5" x2="8" y2="-8" stroke="#00d4ff" stroke-width="3" stroke-linecap="round"/>
+    <line x1="-8" y1="8" x2="-5" y2="5" stroke="#00d4ff" stroke-width="3" stroke-linecap="round"/>
+  </g>
+
+  <!-- Prompt indicator -->
+  <text x="76" y="36" font-family="Courier New, Courier, monospace" font-size="14" fill="#00d4ff" opacity="0.6">$</text>
+
+  <!-- Section title -->
+  <text x="96" y="48" font-family="Courier New, Courier, monospace" font-size="18" font-weight="bold" fill="#00d4ff" filter="url(#glowG)">Setup &amp; Configuration</text>
+
+  <!-- Scanlines -->
+  <rect width="400" height="80" rx="8" ry="8" fill="url(#sl)"/>
+</svg>

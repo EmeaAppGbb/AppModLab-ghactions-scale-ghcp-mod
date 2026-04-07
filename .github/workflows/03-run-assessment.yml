@@ -1,0 +1,222 @@
+# ============================================================================
+# 03-run-assessment.yml — Assessment Runner
+# ============================================================================
+# Clones a SINGLE repository, creates a ghcp-mod branch, runs the
+# modernize CLI assessment in headless mode, commits the results, and
+# pushes the branch.
+#
+# Repository variables:
+#   TARGET_ORG      — GitHub organization that owns the target repo
+#   MODERNIZE_MODEL — (optional) LLM model to pass to the modernize CLI
+#
+# Secrets:
+#   GH_PAT — Personal Access Token with repo scope
+# ============================================================================
+
+name: "03 · Run Assessment"
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_repo:
+        description: "Repository name to assess (just the name, not full path)"
+        required: true
+        type: string
+      dry_run:
+        description: "Dry run — show plan without running assessment"
+        required: false
+        type: boolean
+        default: true
+
+# Only one assessment per repo at a time
+concurrency:
+  group: assess-${{ inputs.target_repo }}
+  cancel-in-progress: false
+
+jobs:
+  assess:
+    name: "Assess ${{ inputs.target_repo }}"
+    runs-on: ubuntu-latest
+
+    env:
+      ORG: ${{ vars.TARGET_ORG }}
+      REPO_NAME: ${{ inputs.target_repo }}
+      MODEL: ${{ vars.MODERNIZE_MODEL }}
+      DRY_RUN: ${{ inputs.dry_run }}
+      GH_TOKEN: ${{ secrets.GH_PAT }}
+
+    steps:
+      # ── Validate inputs ────────────────────────────────────────────────
+      - name: Validate inputs
+        run: |
+          if [[ -z "$ORG" ]]; then
+            echo "::error::TARGET_ORG repo variable is not set."
+            exit 1
+          fi
+          if [[ -z "$REPO_NAME" ]]; then
+            echo "::error::target_repo input is required."
+            exit 1
+          fi
+
+          echo "🏢 Organization: $ORG"
+          echo "📦 Target repo: $REPO_NAME"
+          echo "🤖 Model: ${MODEL:-<default>}"
+          echo "🧪 Dry run: $DRY_RUN"
+
+      # ── Dry-run summary ────────────────────────────────────────────────
+      - name: Show dry-run plan
+        if: inputs.dry_run == true
+        run: |
+          {
+            echo "## 🧪 Dry Run — Assessment Plan"
+            echo ""
+            echo "| Parameter | Value |"
+            echo "|-----------|-------|"
+            echo "| Repository | \`$ORG/$REPO_NAME\` |"
+            echo "| Branch | \`ghcp-mod\` |"
+            echo "| Model | \`${MODEL:-default}\` |"
+            echo "| Output path | \`./ghcp-mod-assessment\` |"
+            echo ""
+            echo "### Steps that **would** execute:"
+            echo ""
+            echo "1. Install \`@modernize/cli\` globally"
+            echo "2. Clone \`$ORG/$REPO_NAME\`"
+            echo "3. Create & checkout \`ghcp-mod\` branch"
+            echo "4. Run \`modernize assess --source . --output-path ./ghcp-mod-assessment --no-tty\`"
+            echo "5. Commit assessment output"
+            echo "6. Push \`ghcp-mod\` branch"
+            echo ""
+            echo "> ⚠️ **No changes were made.** Re-run with \`dry_run: false\` to execute."
+            echo ""
+            echo "_Run at $(date -u '+%Y-%m-%d %H:%M UTC') by @${{ github.actor }}_"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          echo "✅ Dry-run plan generated. Exiting."
+
+      # ── Install modernize CLI ──────────────────────────────────────────
+      - name: Install modernize CLI
+        if: inputs.dry_run == false
+        run: |
+          echo "📦 Installing modernize CLI ..."
+          npm install -g @modernize/cli
+          echo "✅ modernize CLI installed."
+          modernize --version || echo "⚠️  Version check not available"
+
+      # ── Clone the target repo ──────────────────────────────────────────
+      - name: Clone target repository
+        if: inputs.dry_run == false
+        run: |
+          echo "📥 Cloning $ORG/$REPO_NAME ..."
+          gh repo clone "$ORG/$REPO_NAME" target-repo
+          echo "✅ Repository cloned."
+
+      # ── Create ghcp-mod branch ─────────────────────────────────────────
+      - name: Create ghcp-mod branch
+        if: inputs.dry_run == false
+        working-directory: target-repo
+        run: |
+          echo "🌿 Creating ghcp-mod branch ..."
+
+          # Check if the remote branch already exists
+          if git ls-remote --heads origin ghcp-mod | grep -q ghcp-mod; then
+            echo "ℹ️  Branch ghcp-mod already exists on remote. Checking out."
+            git fetch origin ghcp-mod
+            git checkout ghcp-mod
+          else
+            echo "🆕 Creating new branch ghcp-mod."
+            git checkout -b ghcp-mod
+          fi
+
+          echo "✅ On branch: $(git branch --show-current)"
+
+      # ── Run the assessment ─────────────────────────────────────────────
+      - name: Run modernize assessment
+        if: inputs.dry_run == false
+        working-directory: target-repo
+        run: |
+          echo "🔍 Running modernize assessment ..."
+
+          # Build the command
+          CMD="modernize assess --source . --output-path ./ghcp-mod-assessment --no-tty"
+
+          # Add model flag if configured
+          if [[ -n "$MODEL" ]]; then
+            CMD="$CMD --model $MODEL"
+            echo "🤖 Using model: $MODEL"
+          fi
+
+          echo "▶️ Command: $CMD"
+          eval "$CMD"
+
+          echo "✅ Assessment complete."
+
+          # Verify output was created
+          if [[ -d ./ghcp-mod-assessment ]]; then
+            echo "📂 Assessment output:"
+            ls -la ./ghcp-mod-assessment/
+          else
+            echo "::error::Assessment output directory not found!"
+            exit 1
+          fi
+
+      # ── Commit results ─────────────────────────────────────────────────
+      - name: Commit assessment results
+        if: inputs.dry_run == false
+        working-directory: target-repo
+        run: |
+          echo "💾 Committing assessment results ..."
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add ghcp-mod-assessment/
+          git status
+
+          # Only commit if there are changes
+          if git diff --cached --quiet; then
+            echo "ℹ️  No new changes to commit (assessment may already exist)."
+          else
+            git commit -m "🔍 Add GHCP modernization assessment
+
+Automated assessment generated by the modernize CLI.
+Repository: $ORG/$REPO_NAME
+Model: ${MODEL:-default}
+Run by: @${{ github.actor }}"
+            echo "✅ Changes committed."
+          fi
+
+      # ── Push branch ────────────────────────────────────────────────────
+      - name: Push ghcp-mod branch
+        if: inputs.dry_run == false
+        working-directory: target-repo
+        run: |
+          echo "🚀 Pushing ghcp-mod branch ..."
+          git push origin ghcp-mod --force-with-lease
+          echo "✅ Branch pushed to $ORG/$REPO_NAME."
+
+      # ── Job summary ────────────────────────────────────────────────────
+      - name: Write job summary
+        if: inputs.dry_run == false
+        run: |
+          {
+            echo "## ✅ Assessment Complete — \`$ORG/$REPO_NAME\`"
+            echo ""
+            echo "| Detail | Value |"
+            echo "|--------|-------|"
+            echo "| Repository | [\`$ORG/$REPO_NAME\`](https://github.com/$ORG/$REPO_NAME) |"
+            echo "| Branch | \`ghcp-mod\` |"
+            echo "| Model | \`${MODEL:-default}\` |"
+            echo "| Output | \`ghcp-mod-assessment/\` |"
+            echo ""
+            echo "### 📂 Assessment files"
+            echo ""
+            echo "\`\`\`"
+            ls -la target-repo/ghcp-mod-assessment/ 2>/dev/null || echo "No files listed"
+            echo "\`\`\`"
+            echo ""
+            echo "### Next steps"
+            echo ""
+            echo "- Run **04 · Create PR** to open a pull request with the findings."
+            echo ""
+            echo "_Run at $(date -u '+%Y-%m-%d %H:%M UTC') by @${{ github.actor }}_"
+          } >> "$GITHUB_STEP_SUMMARY"
