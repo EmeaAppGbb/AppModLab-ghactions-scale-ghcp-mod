@@ -50,7 +50,10 @@ modernize plan create "Migrate from Java 8 to Java 21" --no-tty
   <img src="assets/flow-pipeline.svg" alt="Pipeline flow — Discovery → Filter → Assess → PR" width="100%" />
 </p>
 
-This lab builds a **four-phase pipeline** using GitHub Actions workflows:
+> 📸 [View: Pipeline Overview — Full Architecture Diagram](assets/screenshots/00-pipeline-overview.html)
+> *Open the HTML file in a browser to view the syntax-highlighted rendering.*
+
+This lab builds a **four-phase pipeline**using GitHub Actions workflows:
 
 | Phase | Workflow | What It Does |
 |-------|----------|--------------|
@@ -267,6 +270,9 @@ gh workflow run 01-discover-repos.yml \
   --repo YOUR_ORG/AppModLab-ghactions-scale-ghcp-mod
 ```
 
+> 📸 [View: Discover Repos Workflow Source](assets/screenshots/01-discover-repos.html)
+> *Open the HTML file in a browser to view the syntax-highlighted rendering of `01-discover-repos.yml`.*
+
 Or via the GitHub UI: **Actions → 01 - Discover Repos → Run workflow**
 
 #### Watch It Run
@@ -319,6 +325,9 @@ Now let's narrow the list down to repos that should actually be assessed.
 gh workflow run 02-filter-repos.yml \
   --repo YOUR_ORG/AppModLab-ghactions-scale-ghcp-mod
 ```
+
+> 📸 [View: Filter Repos Workflow Source](assets/screenshots/02-filter-repos.html)
+> *Open the HTML file in a browser to view the syntax-highlighted rendering of `02-filter-repos.yml`.*
 
 #### What Filtering Does
 
@@ -386,6 +395,9 @@ gh workflow run 03-run-assessment.yml \
   -f target_repo="AppModLab-java-8to21-AssetsManager-spec2cloud"
 ```
 
+> 📸 [View: Run Assessment Workflow Source](assets/screenshots/03-run-assessment.html)
+> *Open the HTML file in a browser to view the syntax-highlighted rendering of `03-run-assessment.yml`.*
+
 #### What Happens Under the Hood
 
 1. **Clone** — The workflow clones the target repo
@@ -444,9 +456,12 @@ gh workflow run 04-create-pr.yml \
   -f target_repo="AppModLab-java-8to21-AssetsManager-spec2cloud"
 ```
 
+> 📸 [View: Create PR Workflow Source](assets/screenshots/04-create-pr.html)
+> *Open the HTML file in a browser to view the syntax-highlighted rendering of `04-create-pr.yml`.*
+
 #### What Happens
 
-The workflow creates a PR in the **target repo** (not this repo) from the `ghcp-mod` branch to the default branch. The PR contains:
+The workflow creates a PRin the **target repo** (not this repo) from the `ghcp-mod` branch to the default branch. The PR contains:
 
 - The full assessment report
 - Modernization recommendations
@@ -476,6 +491,9 @@ Ready to scale? The batch workflow orchestrates the entire pipeline across all f
 gh workflow run 05-batch-assessment.yml \
   --repo YOUR_ORG/AppModLab-ghactions-scale-ghcp-mod
 ```
+
+> 📸 [View: Batch Assessment Workflow Source](assets/screenshots/05-batch-assessment.html)
+> *Open the HTML file in a browser to view the syntax-highlighted rendering of `05-batch-assessment.yml`.*
 
 #### Safety First: Use `max_repos`
 
@@ -582,6 +600,21 @@ All workflows use `workflow_dispatch` — you trigger them manually from the **A
 | **Sample: .NET 4 → 10** | [AppModLab-dotnet-4to10-contosouniversity-spec2cloud](https://github.com/EmeaAppGbb/AppModLab-dotnet-4to10-contosouniversity-spec2cloud) |
 | **GitHub Actions Docs** | [docs.github.com — GitHub Actions](https://docs.github.com/en/actions) |
 | **GitHub CLI** | [cli.github.com](https://cli.github.com/) |
+
+---
+
+## 📸 Workflow Screenshots
+
+Syntax-highlighted HTML renderings of each workflow are available in [`assets/screenshots/`](assets/screenshots/). Open them in a browser to view or capture screenshots.
+
+| Screenshot | Workflow |
+|-----------|----------|
+| [Pipeline Overview](assets/screenshots/00-pipeline-overview.html) | Architecture diagram with all phases and configuration |
+| [01 — Discover Repos](assets/screenshots/01-discover-repos.html) | `01-discover-repos.yml` — lists all org repos |
+| [02 — Filter & Prepare](assets/screenshots/02-filter-repos.html) | `02-filter-repos.yml` — applies language + blacklist filters |
+| [03 — Run Assessment](assets/screenshots/03-run-assessment.html) | `03-run-assessment.yml` — clones, assesses, commits |
+| [04 — Create PR](assets/screenshots/04-create-pr.html) | `04-create-pr.yml` — opens PR with assessment results |
+| [05 — Batch Assessment](assets/screenshots/05-batch-assessment.html) | `05-batch-assessment.yml` — orchestrates full pipeline |
 
 ---
 

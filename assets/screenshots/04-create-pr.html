@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>04-create-pr.yml</title>
+<style>
+  body {
+    margin: 0; padding: 0;
+    background: #0d1117;
+    font-family: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', 'Consolas', monospace;
+  }
+  .container {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 24px;
+  }
+  .header {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 6px 6px 0 0;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+  .dot-red { background: #ff5f56; }
+  .dot-yellow { background: #ffbd2e; }
+  .dot-green { background: #27c93f; }
+  .filename {
+    color: #8b949e;
+    font-size: 13px;
+    margin-left: 8px;
+  }
+  .badge {
+    background: #238636;
+    color: #fff;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-left: auto;
+  }
+  pre {
+    margin: 0;
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-top: none;
+    border-radius: 0 0 6px 6px;
+    padding: 16px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  code { font-family: inherit; }
+  /* GitHub Dark theme for highlight.js */
+  .hljs { color: #c9d1d9; background: #0d1117; }
+  .hljs-comment, .hljs-quote { color: #8b949e; font-style: italic; }
+  .hljs-keyword, .hljs-selector-tag { color: #ff7b72; }
+  .hljs-string, .hljs-addition { color: #a5d6ff; }
+  .hljs-number, .hljs-literal { color: #79c0ff; }
+  .hljs-built_in { color: #d2a8ff; }
+  .hljs-attr, .hljs-variable, .hljs-template-variable { color: #79c0ff; }
+  .hljs-type, .hljs-title { color: #d2a8ff; }
+  .hljs-section { color: #d2a8ff; font-weight: bold; }
+  .hljs-name, .hljs-selector-id, .hljs-selector-class { color: #7ee787; }
+  .hljs-deletion { color: #ffa198; background: rgba(248,81,73,0.15); }
+  .hljs-emphasis { font-style: italic; }
+  .hljs-strong { font-weight: bold; }
+  .hljs-bullet { color: #f2cc60; }
+  .line-numbers {
+    counter-reset: line;
+  }
+  .line-numbers .line::before {
+    counter-increment: line;
+    content: counter(line);
+    display: inline-block;
+    width: 3em;
+    margin-right: 1em;
+    text-align: right;
+    color: #484f58;
+    user-select: none;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <span class="dot dot-red"></span>
+    <span class="dot dot-yellow"></span>
+    <span class="dot dot-green"></span>
+    <span class="filename">.github/workflows/04-create-pr.yml</span>
+    <span class="badge">YAML</span>
+  </div>
+  <pre><code class="line-numbers"><span class="line"><span class="hljs-comment"># ============================================================================</span></span>
+<span class="line"><span class="hljs-comment"># 04-create-pr.yml — PR Creator</span></span>
+<span class="line"><span class="hljs-comment"># ============================================================================</span></span>
+<span class="line"><span class="hljs-comment"># Creates a pull request from the ghcp-mod branch to main, containing the</span></span>
+<span class="line"><span class="hljs-comment"># modernization assessment results. Adds labels and a rich PR body.</span></span>
+<span class="line"><span class="hljs-comment">#</span></span>
+<span class="line"><span class="hljs-comment"># Repository variables:</span></span>
+<span class="line"><span class="hljs-comment">#   TARGET_ORG — GitHub organization that owns the target repo</span></span>
+<span class="line"><span class="hljs-comment">#</span></span>
+<span class="line"><span class="hljs-comment"># Secrets:</span></span>
+<span class="line"><span class="hljs-comment">#   GH_PAT — Personal Access Token with repo scope</span></span>
+<span class="line"><span class="hljs-comment"># ============================================================================</span></span>
+<span class="line"></span>
+<span class="line"><span class="hljs-attr">name:</span> <span class="hljs-string">&quot;04 · Create PR&quot;</span></span>
+<span class="line"></span>
+<span class="line"><span class="hljs-attr">on:</span></span>
+<span class="line">  <span class="hljs-attr">workflow_dispatch:</span></span>
+<span class="line">    <span class="hljs-attr">inputs:</span></span>
+<span class="line">      <span class="hljs-attr">target_repo:</span></span>
+<span class="line">        <span class="hljs-attr">description:</span> <span class="hljs-string">&quot;Repository name to create PR for (just the name)&quot;</span></span>
+<span class="line">        <span class="hljs-attr">required:</span> <span class="hljs-literal">true</span></span>
+<span class="line">        <span class="hljs-attr">type:</span> <span class="hljs-string">string</span></span>
+<span class="line"></span>
+<span class="line"><span class="hljs-comment"># Only one PR creation per repo at a time</span></span>
+<span class="line"><span class="hljs-attr">concurrency:</span></span>
+<span class="line">  <span class="hljs-attr">group:</span> <span class="hljs-string">create-pr-${{</span> <span class="hljs-string">inputs.target_repo</span> <span class="hljs-string">}}</span></span>
+<span class="line">  <span class="hljs-attr">cancel-in-progress:</span> <span class="hljs-literal">false</span></span>
+<span class="line"></span>
+<span class="line"><span class="hljs-attr">jobs:</span></span>
+<span class="line">  <span class="hljs-attr">create-pr:</span></span>
+<span class="line">    <span class="hljs-attr">name:</span> <span class="hljs-string">&quot;Create PR for $<span class="hljs-template-variable">{{ inputs.target_repo }}</span>&quot;</span></span>
+<span class="line">    <span class="hljs-attr">runs-on:</span> <span class="hljs-string">ubuntu-latest</span></span>
+<span class="line"></span>
+<span class="line">    <span class="hljs-attr">env:</span></span>
+<span class="line">      <span class="hljs-attr">ORG:</span> <span class="hljs-string">${{</span> <span class="hljs-string">vars.TARGET_ORG</span> <span class="hljs-string">}}</span></span>
+<span class="line">      <span class="hljs-attr">REPO_NAME:</span> <span class="hljs-string">${{</span> <span class="hljs-string">inputs.target_repo</span> <span class="hljs-string">}}</span></span>
+<span class="line">      <span class="hljs-attr">GH_TOKEN:</span> <span class="hljs-string">${{</span> <span class="hljs-string">secrets.GH_PAT</span> <span class="hljs-string">}}</span></span>
+<span class="line"></span>
+<span class="line">    <span class="hljs-attr">steps:</span></span>
+<span class="line">      <span class="hljs-comment"># ── Validate inputs ────────────────────────────────────────────────</span></span>
+<span class="line">      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Validate</span> <span class="hljs-string">inputs</span></span>
+<span class="line">        <span class="hljs-attr">run:</span> <span class="hljs-string">|</span></span>
+<span class="line">          <span class="hljs-string">if</span> [[ <span class="hljs-string">-z</span> <span class="hljs-string">&quot;$ORG&quot;</span> ]]<span class="hljs-string">;</span> <span class="hljs-string">then</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;::error::TARGET_ORG repo variable is not set.&quot;</span></span>
+<span class="line">            <span class="hljs-string">exit</span> <span class="hljs-number">1</span></span>
+<span class="line">          <span class="hljs-string">fi</span></span>
+<span class="line">          <span class="hljs-string">if</span> [[ <span class="hljs-string">-z</span> <span class="hljs-string">&quot;$REPO_NAME&quot;</span> ]]<span class="hljs-string">;</span> <span class="hljs-string">then</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;::error::target_repo input is required.&quot;</span></span>
+<span class="line">            <span class="hljs-string">exit</span> <span class="hljs-number">1</span></span>
+<span class="line">          <span class="hljs-string">fi</span></span>
+<span class="line">          <span class="hljs-string">echo</span> <span class="hljs-string">&quot;🏢 Organization: $ORG&quot;</span></span>
+<span class="line">          <span class="hljs-string">echo</span> <span class="hljs-string">&quot;📦 Target repo: $REPO_NAME&quot;</span></span>
+<span class="line"></span>
+<span class="line">      <span class="hljs-comment"># ── Check that ghcp-mod branch exists ──────────────────────────────</span></span>
+<span class="line">      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Verify</span> <span class="hljs-string">ghcp-mod</span> <span class="hljs-string">branch</span> <span class="hljs-string">exists</span></span>
+<span class="line">        <span class="hljs-attr">run:</span> <span class="hljs-string">|</span></span>
+<span class="line">          <span class="hljs-string">echo</span> <span class="hljs-string">&quot;🔎 Checking for ghcp-mod branch on $ORG/$REPO_NAME ...&quot;</span></span>
+<span class="line"></span>
+<span class="line">          <span class="hljs-string">BRANCH_EXISTS=$(gh</span> <span class="hljs-string">api</span> <span class="hljs-string">&quot;repos/$ORG/$REPO_NAME/branches/ghcp-mod&quot;</span> <span class="hljs-string">--jq</span> <span class="hljs-string">&#x27;.name&#x27;</span> <span class="hljs-number">2</span><span class="hljs-string">&gt;/dev/null</span> <span class="hljs-string">||</span> <span class="hljs-string">echo</span> <span class="hljs-string">&quot;&quot;</span><span class="hljs-string">)</span></span>
+<span class="line">          <span class="hljs-string">if</span> [[ <span class="hljs-string">-z</span> <span class="hljs-string">&quot;$BRANCH_EXISTS&quot;</span> ]]<span class="hljs-string">;</span> <span class="hljs-string">then</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;::error::Branch &#x27;ghcp-mod&#x27; does not exist on $ORG/$REPO_NAME. Run the assessment workflow first.&quot;</span></span>
+<span class="line">            <span class="hljs-string">exit</span> <span class="hljs-number">1</span></span>
+<span class="line">          <span class="hljs-string">fi</span></span>
+<span class="line"></span>
+<span class="line">          <span class="hljs-string">echo</span> <span class="hljs-string">&quot;✅ Branch ghcp-mod found.&quot;</span></span>
+<span class="line"></span>
+<span class="line">      <span class="hljs-comment"># ── Check for existing PR ──────────────────────────────────────────</span></span>
+<span class="line">      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Check</span> <span class="hljs-string">for</span> <span class="hljs-string">existing</span> <span class="hljs-string">PR</span></span>
+<span class="line">        <span class="hljs-attr">id:</span> <span class="hljs-string">check-pr</span></span>
+<span class="line">        <span class="hljs-attr">run:</span> <span class="hljs-string">|</span></span>
+<span class="line">          <span class="hljs-string">EXISTING_PR=$(gh</span> <span class="hljs-string">pr</span> <span class="hljs-string">list</span> <span class="hljs-string">\</span></span>
+<span class="line">            <span class="hljs-string">--repo</span> <span class="hljs-string">&quot;$ORG/$REPO_NAME&quot;</span> <span class="hljs-string">\</span></span>
+<span class="line">            <span class="hljs-string">--head</span> <span class="hljs-string">ghcp-mod</span> <span class="hljs-string">\</span></span>
+<span class="line">            <span class="hljs-string">--base</span> <span class="hljs-string">main</span> <span class="hljs-string">\</span></span>
+<span class="line">            <span class="hljs-string">--json</span> <span class="hljs-string">number,url</span> <span class="hljs-string">\</span></span>
+<span class="line">            <span class="hljs-string">--jq</span> <span class="hljs-string">&#x27;.[0].url // &quot;&quot;&#x27;</span><span class="hljs-string">)</span></span>
+<span class="line"></span>
+<span class="line">          <span class="hljs-string">if</span> [[ <span class="hljs-string">-n</span> <span class="hljs-string">&quot;$EXISTING_PR&quot;</span> ]]<span class="hljs-string">;</span> <span class="hljs-string">then</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;ℹ️  PR already exists: $EXISTING_PR&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;exists=true&quot;</span> <span class="hljs-string">&gt;&gt;</span> <span class="hljs-string">&quot;$GITHUB_OUTPUT&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;url=$EXISTING_PR&quot;</span> <span class="hljs-string">&gt;&gt;</span> <span class="hljs-string">&quot;$GITHUB_OUTPUT&quot;</span></span>
+<span class="line">          <span class="hljs-string">else</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;exists=false&quot;</span> <span class="hljs-string">&gt;&gt;</span> <span class="hljs-string">&quot;$GITHUB_OUTPUT&quot;</span></span>
+<span class="line">          <span class="hljs-string">fi</span></span>
+<span class="line"></span>
+<span class="line">      <span class="hljs-comment"># ── Create the PR ──────────────────────────────────────────────────</span></span>
+<span class="line">      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Create</span> <span class="hljs-string">pull</span> <span class="hljs-string">request</span></span>
+<span class="line">        <span class="hljs-attr">id:</span> <span class="hljs-string">create</span></span>
+<span class="line">        <span class="hljs-attr">if:</span> <span class="hljs-string">steps.check-pr.outputs.exists</span> <span class="hljs-string">==</span> <span class="hljs-string">&#x27;false&#x27;</span></span>
+<span class="line">        <span class="hljs-attr">run:</span> <span class="hljs-string">|</span></span>
+<span class="line">          <span class="hljs-string">PR_TITLE=&quot;🔍</span> <span class="hljs-string">GHCP</span> <span class="hljs-string">Modernization</span> <span class="hljs-string">Assessment</span> <span class="hljs-string">—</span> <span class="hljs-string">$REPO_NAME&quot;</span></span>
+<span class="line"></span>
+<span class="line">          <span class="hljs-string">PR_BODY=$(cat</span> <span class="hljs-string">&lt;&lt;&#x27;ENDOFBODY&#x27;</span></span>
+<span class="line">          <span class="hljs-comment">## 🔍 GHCP Modernization Assessment</span></span>
+<span class="line"></span>
+<span class="line">          <span class="hljs-string">This</span> <span class="hljs-string">pull</span> <span class="hljs-string">request</span> <span class="hljs-string">contains</span> <span class="hljs-string">an</span> <span class="hljs-string">automated</span> <span class="hljs-string">modernization</span> <span class="hljs-string">assessment</span> <span class="hljs-string">generated</span> <span class="hljs-string">by</span></span>
+<span class="line">          <span class="hljs-string">the</span> <span class="hljs-string">**GitHub</span> <span class="hljs-string">Copilot</span> <span class="hljs-string">Modernization</span> <span class="hljs-string">CLI**</span> <span class="hljs-string">(`modernize</span> <span class="hljs-string">assess`).</span></span>
+<span class="line"></span>
+<span class="line">          <span class="hljs-comment">### 📂 What&#x27;s included</span></span>
+<span class="line"></span>
+<span class="line">          <span class="hljs-bullet">-</span> <span class="hljs-string">**Assessment</span> <span class="hljs-string">report**</span> <span class="hljs-string">in</span> <span class="hljs-string">`ghcp-mod-assessment/`</span> <span class="hljs-string">—</span> <span class="hljs-string">a</span> <span class="hljs-string">detailed</span> <span class="hljs-string">analysis</span> <span class="hljs-string">of</span> <span class="hljs-string">the</span></span>
+<span class="line">            <span class="hljs-string">codebase</span> <span class="hljs-string">covering</span> <span class="hljs-string">architecture,</span> <span class="hljs-string">dependencies,</span> <span class="hljs-string">patterns,</span> <span class="hljs-string">and</span> <span class="hljs-string">modernization</span></span>
+<span class="line">            <span class="hljs-string">opportunities.</span></span>
+<span class="line"></span>
+<span class="line">          <span class="hljs-comment">### 📋 Next steps for the repo owner</span></span>
+<span class="line"></span>
+<span class="line">          <span class="hljs-number">1</span><span class="hljs-string">.</span> <span class="hljs-string">**Review</span> <span class="hljs-string">the</span> <span class="hljs-string">assessment**</span> <span class="hljs-string">—</span> <span class="hljs-string">Open</span> <span class="hljs-string">the</span> <span class="hljs-string">files</span> <span class="hljs-string">in</span> <span class="hljs-string">`ghcp-mod-assessment/`</span> <span class="hljs-string">and</span></span>
+<span class="line">             <span class="hljs-string">review</span> <span class="hljs-string">the</span> <span class="hljs-string">findings,</span> <span class="hljs-string">recommendations,</span> <span class="hljs-string">and</span> <span class="hljs-string">identified</span> <span class="hljs-string">patterns.</span></span>
+<span class="line">          <span class="hljs-number">2</span><span class="hljs-string">.</span> <span class="hljs-string">**Create</span> <span class="hljs-string">a</span> <span class="hljs-string">modernization</span> <span class="hljs-string">plan**</span> <span class="hljs-string">—</span> <span class="hljs-string">Use</span> <span class="hljs-string">`modernize</span> <span class="hljs-string">plan</span> <span class="hljs-string">create`</span> <span class="hljs-string">to</span> <span class="hljs-string">generate</span> <span class="hljs-string">a</span></span>
+<span class="line">             <span class="hljs-string">step-by-step</span> <span class="hljs-string">modernization</span> <span class="hljs-string">plan</span> <span class="hljs-string">based</span> <span class="hljs-string">on</span> <span class="hljs-string">the</span> <span class="hljs-string">assessment.</span></span>
+<span class="line">          <span class="hljs-number">3</span><span class="hljs-string">.</span> <span class="hljs-string">**Prioritize</span> <span class="hljs-string">changes**</span> <span class="hljs-string">—</span> <span class="hljs-string">Identify</span> <span class="hljs-string">quick</span> <span class="hljs-string">wins</span> <span class="hljs-string">vs.</span> <span class="hljs-string">larger</span> <span class="hljs-string">refactoring</span> <span class="hljs-string">efforts.</span></span>
+<span class="line">          <span class="hljs-number">4</span><span class="hljs-string">.</span> <span class="hljs-string">**Merge</span> <span class="hljs-string">or</span> <span class="hljs-string">close**</span> <span class="hljs-string">—</span> <span class="hljs-string">If</span> <span class="hljs-string">the</span> <span class="hljs-string">assessment</span> <span class="hljs-string">is</span> <span class="hljs-string">useful,</span> <span class="hljs-string">merge</span> <span class="hljs-string">this</span> <span class="hljs-string">PR</span> <span class="hljs-string">to</span> <span class="hljs-string">keep</span> <span class="hljs-string">the</span></span>
+<span class="line">             <span class="hljs-string">report</span> <span class="hljs-string">in</span> <span class="hljs-string">the</span> <span class="hljs-string">repository.</span> <span class="hljs-string">Otherwise,</span> <span class="hljs-string">close</span> <span class="hljs-string">it.</span></span>
+<span class="line"></span>
+<span class="line">          <span class="hljs-comment">### ⚙️ About this PR</span></span>
+<span class="line"></span>
+<span class="line">          <span class="hljs-bullet">-</span> <span class="hljs-string">**Generated</span> <span class="hljs-string">by:**</span> <span class="hljs-string">GitHub</span> <span class="hljs-string">Actions</span> <span class="hljs-string">automation</span></span>
+<span class="line">          <span class="hljs-bullet">-</span> <span class="hljs-string">**Branch:**</span> <span class="hljs-string">`ghcp-mod`</span></span>
+<span class="line">          <span class="hljs-bullet">-</span> <span class="hljs-string">**Tool:**</span> [<span class="hljs-string">GitHub</span> <span class="hljs-string">Copilot</span> <span class="hljs-string">Modernization</span> <span class="hljs-string">CLI</span>]<span class="hljs-string">(https://github.com/github/gh-modernize)</span></span>
+<span class="line"></span>
+<span class="line">          <span class="hljs-string">---</span></span>
+<span class="line"></span>
+<span class="line">          <span class="hljs-string">&gt;</span> <span class="hljs-string">🤖</span> <span class="hljs-string">_This</span> <span class="hljs-string">PR</span> <span class="hljs-string">was</span> <span class="hljs-string">created</span> <span class="hljs-string">automatically.</span> <span class="hljs-string">Please</span> <span class="hljs-string">review</span> <span class="hljs-string">the</span> <span class="hljs-string">assessment</span> <span class="hljs-string">and</span> <span class="hljs-string">take</span></span>
+<span class="line">          <span class="hljs-string">&gt;</span> <span class="hljs-string">action</span> <span class="hljs-string">as</span> <span class="hljs-string">appropriate</span> <span class="hljs-string">for</span> <span class="hljs-string">your</span> <span class="hljs-string">project._</span></span>
+<span class="line">          <span class="hljs-string">ENDOFBODY</span></span>
+<span class="line">          <span class="hljs-string">)</span></span>
+<span class="line"></span>
+<span class="line">          <span class="hljs-string">PR_URL=$(gh</span> <span class="hljs-string">pr</span> <span class="hljs-string">create</span> <span class="hljs-string">\</span></span>
+<span class="line">            <span class="hljs-string">--repo</span> <span class="hljs-string">&quot;$ORG/$REPO_NAME&quot;</span> <span class="hljs-string">\</span></span>
+<span class="line">            <span class="hljs-string">--title</span> <span class="hljs-string">&quot;$PR_TITLE&quot;</span> <span class="hljs-string">\</span></span>
+<span class="line">            <span class="hljs-string">--body</span> <span class="hljs-string">&quot;$PR_BODY&quot;</span> <span class="hljs-string">\</span></span>
+<span class="line">            <span class="hljs-string">--base</span> <span class="hljs-string">main</span> <span class="hljs-string">\</span></span>
+<span class="line">            <span class="hljs-string">--head</span> <span class="hljs-string">ghcp-mod)</span></span>
+<span class="line"></span>
+<span class="line">          <span class="hljs-string">echo</span> <span class="hljs-string">&quot;url=$PR_URL&quot;</span> <span class="hljs-string">&gt;&gt;</span> <span class="hljs-string">&quot;$GITHUB_OUTPUT&quot;</span></span>
+<span class="line">          <span class="hljs-string">echo</span> <span class="hljs-string">&quot;✅ PR created: $PR_URL&quot;</span></span>
+<span class="line"></span>
+<span class="line">      <span class="hljs-comment"># ── Add labels ─────────────────────────────────────────────────────</span></span>
+<span class="line">      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Add</span> <span class="hljs-string">labels</span> <span class="hljs-string">to</span> <span class="hljs-string">PR</span></span>
+<span class="line">        <span class="hljs-attr">if:</span> <span class="hljs-string">steps.check-pr.outputs.exists</span> <span class="hljs-string">==</span> <span class="hljs-string">&#x27;false&#x27;</span></span>
+<span class="line">        <span class="hljs-attr">run:</span> <span class="hljs-string">|</span></span>
+<span class="line">          <span class="hljs-comment"># Ensure labels exist (create if missing)</span></span>
+<span class="line">          <span class="hljs-string">for</span> <span class="hljs-string">LABEL</span> <span class="hljs-string">in</span> <span class="hljs-string">&quot;ghcp-mod&quot;</span> <span class="hljs-string">&quot;assessment&quot;</span><span class="hljs-string">;</span> <span class="hljs-string">do</span></span>
+<span class="line">            <span class="hljs-string">gh</span> <span class="hljs-string">label</span> <span class="hljs-string">create</span> <span class="hljs-string">&quot;$LABEL&quot;</span> <span class="hljs-string">\</span></span>
+<span class="line">              <span class="hljs-string">--repo</span> <span class="hljs-string">&quot;$ORG/$REPO_NAME&quot;</span> <span class="hljs-string">\</span></span>
+<span class="line">              <span class="hljs-string">--description</span> <span class="hljs-string">&quot;GHCP Modernization&quot;</span> <span class="hljs-string">\</span></span>
+<span class="line">              <span class="hljs-string">--color</span> <span class="hljs-string">&quot;0E8A16&quot;</span> <span class="hljs-string">\</span></span>
+<span class="line">              <span class="hljs-string">--force</span> <span class="hljs-number">2</span><span class="hljs-string">&gt;/dev/null</span> <span class="hljs-string">||</span> <span class="hljs-literal">true</span></span>
+<span class="line">          <span class="hljs-string">done</span></span>
+<span class="line"></span>
+<span class="line">          <span class="hljs-comment"># Add labels to the PR</span></span>
+<span class="line">          <span class="hljs-string">PR_URL=&quot;${{</span> <span class="hljs-string">steps.create.outputs.url</span> <span class="hljs-string">}}&quot;</span></span>
+<span class="line">          <span class="hljs-string">PR_NUMBER=$(basename</span> <span class="hljs-string">&quot;$PR_URL&quot;</span><span class="hljs-string">)</span></span>
+<span class="line"></span>
+<span class="line">          <span class="hljs-string">gh</span> <span class="hljs-string">pr</span> <span class="hljs-string">edit</span> <span class="hljs-string">&quot;$PR_NUMBER&quot;</span> <span class="hljs-string">\</span></span>
+<span class="line">            <span class="hljs-string">--repo</span> <span class="hljs-string">&quot;$ORG/$REPO_NAME&quot;</span> <span class="hljs-string">\</span></span>
+<span class="line">            <span class="hljs-string">--add-label</span> <span class="hljs-string">&quot;ghcp-mod,assessment&quot;</span></span>
+<span class="line"></span>
+<span class="line">          <span class="hljs-string">echo</span> <span class="hljs-string">&quot;🏷️ Labels added: ghcp-mod, assessment&quot;</span></span>
+<span class="line"></span>
+<span class="line">      <span class="hljs-comment"># ── Job summary ────────────────────────────────────────────────────</span></span>
+<span class="line">      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Write</span> <span class="hljs-string">job</span> <span class="hljs-string">summary</span></span>
+<span class="line">        <span class="hljs-attr">run:</span> <span class="hljs-string">|</span></span>
+<span class="line">          <span class="hljs-string">if</span> [[ <span class="hljs-string">&quot;$<span class="hljs-template-variable">{{ steps.check-pr.outputs.exists }}</span>&quot;</span> <span class="hljs-string">==</span> <span class="hljs-string">&quot;true&quot;</span> ]]<span class="hljs-string">;</span> <span class="hljs-string">then</span></span>
+<span class="line">            <span class="hljs-string">PR_URL=&quot;${{</span> <span class="hljs-string">steps.check-pr.outputs.url</span> <span class="hljs-string">}}&quot;</span></span>
+<span class="line">            <span class="hljs-string">STATUS=&quot;ℹ️</span> <span class="hljs-string">PR</span> <span class="hljs-string">already</span> <span class="hljs-string">existed&quot;</span></span>
+<span class="line">          <span class="hljs-string">else</span></span>
+<span class="line">            <span class="hljs-string">PR_URL=&quot;${{</span> <span class="hljs-string">steps.create.outputs.url</span> <span class="hljs-string">}}&quot;</span></span>
+<span class="line">            <span class="hljs-string">STATUS=&quot;✅</span> <span class="hljs-string">PR</span> <span class="hljs-string">created&quot;</span></span>
+<span class="line">          <span class="hljs-string">fi</span></span>
+<span class="line"></span>
+<span class="line">          {</span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;## 📝 PR Creation — \`$ORG/$REPO_NAME\`&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;| Detail | Value |&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;|--------|-------|&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;| Status | $STATUS |&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;| Repository | [\`$ORG/$REPO_NAME\`](https://github.com/$ORG/$REPO_NAME) |&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;| Pull Request | [$PR_URL]($PR_URL) |&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;| Labels | \`ghcp-mod\`, \`assessment\` |&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;_Run at $(date -u &#x27;+%Y-%m-%d %H:%M UTC&#x27;) by @$<span class="hljs-template-variable">{{ github.actor }}</span>_&quot;</span></span>
+<span class="line">          } <span class="hljs-string">&gt;&gt;</span> <span class="hljs-string">&quot;$GITHUB_STEP_SUMMARY&quot;</span></span>
+<span class="line"></span></code></pre>
+</div>
+</body>
+</html>

@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Pipeline Overview — AppModLab</title>
+<style>
+  body {
+    margin: 0; padding: 0;
+    background: #0d1117;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    color: #c9d1d9;
+  }
+  .container { max-width: 900px; margin: 0 auto; padding: 32px 24px; }
+  h1 { color: #58a6ff; font-size: 22px; margin-bottom: 8px; }
+  .subtitle { color: #8b949e; font-size: 14px; margin-bottom: 24px; }
+  .pipeline { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin: 32px 0; }
+  .phase {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    padding: 16px 20px;
+    width: 150px;
+    text-align: center;
+    position: relative;
+  }
+  .phase .num {
+    background: #238636;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 10px;
+    border-radius: 10px;
+    display: inline-block;
+    margin-bottom: 8px;
+  }
+  .phase .icon { font-size: 28px; margin-bottom: 6px; }
+  .phase .name { font-weight: 600; font-size: 15px; margin-bottom: 4px; }
+  .phase .file { color: #8b949e; font-size: 11px; font-family: monospace; }
+  .arrow { display: flex; align-items: center; color: #484f58; font-size: 24px; }
+  .config-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 24px 0;
+  }
+  .config-table th {
+    background: #161b22;
+    border: 1px solid #30363d;
+    padding: 8px 12px;
+    text-align: left;
+    font-size: 13px;
+    color: #58a6ff;
+  }
+  .config-table td {
+    border: 1px solid #30363d;
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+  .config-table code {
+    background: #161b22;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #79c0ff;
+  }
+  .section-label {
+    color: #8b949e;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin: 32px 0 12px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🔄 GitHub Copilot Modernization at Scale</h1>
+  <div class="subtitle">AppModLab — GitHub Actions Pipeline Overview</div>
+
+  <div class="pipeline">
+    <div class="phase">
+      <span class="num">Phase 1</span>
+      <div class="icon">🔍</div>
+      <div class="name">Discover</div>
+      <div class="file">01-discover-repos.yml</div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="phase">
+      <span class="num">Phase 2</span>
+      <div class="icon">🎯</div>
+      <div class="name">Filter</div>
+      <div class="file">02-filter-repos.yml</div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="phase">
+      <span class="num">Phase 3</span>
+      <div class="icon">📊</div>
+      <div class="name">Assess</div>
+      <div class="file">03-run-assessment.yml</div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="phase">
+      <span class="num">Phase 4</span>
+      <div class="icon">📬</div>
+      <div class="name">PR</div>
+      <div class="file">04-create-pr.yml</div>
+    </div>
+  </div>
+
+  <div style="text-align:center; margin: 12px 0;">
+    <div class="phase" style="display:inline-block; border-color:#238636;">
+      <span class="num" style="background:#1f6feb;">Batch</span>
+      <div class="icon">🔄</div>
+      <div class="name">Batch All</div>
+      <div class="file">05-batch-assessment.yml</div>
+    </div>
+  </div>
+
+  <div class="section-label">Configuration</div>
+  <table class="config-table">
+    <tr><th>Variable / Secret</th><th>Purpose</th></tr>
+    <tr><td><code>TARGET_ORG</code></td><td>GitHub organization to scan</td></tr>
+    <tr><td><code>BLACKLIST_REPOS</code></td><td>Comma-separated repos to skip</td></tr>
+    <tr><td><code>TARGET_LANGUAGES</code></td><td>Language filter: <code>java</code> | <code>dotnet</code> | <code>both</code></td></tr>
+    <tr><td><code>MODERNIZE_MODEL</code></td><td>LLM model for the modernize CLI</td></tr>
+    <tr><td><code>GH_PAT</code> (secret)</td><td>Personal Access Token with repo + read:org</td></tr>
+  </table>
+
+  <div class="section-label">Sample Target Repos</div>
+  <table class="config-table">
+    <tr><th>Repository</th><th>Stack</th><th>Migration</th></tr>
+    <tr><td><code>AppModLab-java-8to21-AssetsManager-spec2cloud</code></td><td>Java 8, Spring</td><td>→ Java 21</td></tr>
+    <tr><td><code>AppModLab-dotnet-4to10-contosouniversity-spec2cloud</code></td><td>.NET Framework 4</td><td>→ .NET 10</td></tr>
+  </table>
+</div>
+</body>
+</html>

@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>03-run-assessment.yml</title>
+<style>
+  body {
+    margin: 0; padding: 0;
+    background: #0d1117;
+    font-family: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', 'Consolas', monospace;
+  }
+  .container {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 24px;
+  }
+  .header {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 6px 6px 0 0;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+  .dot-red { background: #ff5f56; }
+  .dot-yellow { background: #ffbd2e; }
+  .dot-green { background: #27c93f; }
+  .filename {
+    color: #8b949e;
+    font-size: 13px;
+    margin-left: 8px;
+  }
+  .badge {
+    background: #238636;
+    color: #fff;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-left: auto;
+  }
+  pre {
+    margin: 0;
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-top: none;
+    border-radius: 0 0 6px 6px;
+    padding: 16px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  code { font-family: inherit; }
+  /* GitHub Dark theme for highlight.js */
+  .hljs { color: #c9d1d9; background: #0d1117; }
+  .hljs-comment, .hljs-quote { color: #8b949e; font-style: italic; }
+  .hljs-keyword, .hljs-selector-tag { color: #ff7b72; }
+  .hljs-string, .hljs-addition { color: #a5d6ff; }
+  .hljs-number, .hljs-literal { color: #79c0ff; }
+  .hljs-built_in { color: #d2a8ff; }
+  .hljs-attr, .hljs-variable, .hljs-template-variable { color: #79c0ff; }
+  .hljs-type, .hljs-title { color: #d2a8ff; }
+  .hljs-section { color: #d2a8ff; font-weight: bold; }
+  .hljs-name, .hljs-selector-id, .hljs-selector-class { color: #7ee787; }
+  .hljs-deletion { color: #ffa198; background: rgba(248,81,73,0.15); }
+  .hljs-emphasis { font-style: italic; }
+  .hljs-strong { font-weight: bold; }
+  .hljs-bullet { color: #f2cc60; }
+  .line-numbers {
+    counter-reset: line;
+  }
+  .line-numbers .line::before {
+    counter-increment: line;
+    content: counter(line);
+    display: inline-block;
+    width: 3em;
+    margin-right: 1em;
+    text-align: right;
+    color: #484f58;
+    user-select: none;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <span class="dot dot-red"></span>
+    <span class="dot dot-yellow"></span>
+    <span class="dot dot-green"></span>
+    <span class="filename">.github/workflows/03-run-assessment.yml</span>
+    <span class="badge">YAML</span>
+  </div>
+  <pre><code class="line-numbers"><span class="line"><span class="hljs-comment"># ============================================================================</span></span>
+<span class="line"><span class="hljs-comment"># 03-run-assessment.yml — Assessment Runner</span></span>
+<span class="line"><span class="hljs-comment"># ============================================================================</span></span>
+<span class="line"><span class="hljs-comment"># Clones a SINGLE repository, creates a ghcp-mod branch, runs the</span></span>
+<span class="line"><span class="hljs-comment"># modernize CLI assessment in headless mode, commits the results, and</span></span>
+<span class="line"><span class="hljs-comment"># pushes the branch.</span></span>
+<span class="line"><span class="hljs-comment">#</span></span>
+<span class="line"><span class="hljs-comment"># Repository variables:</span></span>
+<span class="line"><span class="hljs-comment">#   TARGET_ORG      — GitHub organization that owns the target repo</span></span>
+<span class="line"><span class="hljs-comment">#   MODERNIZE_MODEL — (optional) LLM model to pass to the modernize CLI</span></span>
+<span class="line"><span class="hljs-comment">#</span></span>
+<span class="line"><span class="hljs-comment"># Secrets:</span></span>
+<span class="line"><span class="hljs-comment">#   GH_PAT — Personal Access Token with repo scope</span></span>
+<span class="line"><span class="hljs-comment"># ============================================================================</span></span>
+<span class="line"></span>
+<span class="line"><span class="hljs-attr">name:</span> <span class="hljs-string">&quot;03 · Run Assessment&quot;</span></span>
+<span class="line"></span>
+<span class="line"><span class="hljs-attr">on:</span></span>
+<span class="line">  <span class="hljs-attr">workflow_dispatch:</span></span>
+<span class="line">    <span class="hljs-attr">inputs:</span></span>
+<span class="line">      <span class="hljs-attr">target_repo:</span></span>
+<span class="line">        <span class="hljs-attr">description:</span> <span class="hljs-string">&quot;Repository name to assess (just the name, not full path)&quot;</span></span>
+<span class="line">        <span class="hljs-attr">required:</span> <span class="hljs-literal">true</span></span>
+<span class="line">        <span class="hljs-attr">type:</span> <span class="hljs-string">string</span></span>
+<span class="line">      <span class="hljs-attr">dry_run:</span></span>
+<span class="line">        <span class="hljs-attr">description:</span> <span class="hljs-string">&quot;Dry run — show plan without running assessment&quot;</span></span>
+<span class="line">        <span class="hljs-attr">required:</span> <span class="hljs-literal">false</span></span>
+<span class="line">        <span class="hljs-attr">type:</span> <span class="hljs-string">boolean</span></span>
+<span class="line">        <span class="hljs-attr">default:</span> <span class="hljs-literal">true</span></span>
+<span class="line"></span>
+<span class="line"><span class="hljs-comment"># Only one assessment per repo at a time</span></span>
+<span class="line"><span class="hljs-attr">concurrency:</span></span>
+<span class="line">  <span class="hljs-attr">group:</span> <span class="hljs-string">assess-${{</span> <span class="hljs-string">inputs.target_repo</span> <span class="hljs-string">}}</span></span>
+<span class="line">  <span class="hljs-attr">cancel-in-progress:</span> <span class="hljs-literal">false</span></span>
+<span class="line"></span>
+<span class="line"><span class="hljs-attr">jobs:</span></span>
+<span class="line">  <span class="hljs-attr">assess:</span></span>
+<span class="line">    <span class="hljs-attr">name:</span> <span class="hljs-string">&quot;Assess $<span class="hljs-template-variable">{{ inputs.target_repo }}</span>&quot;</span></span>
+<span class="line">    <span class="hljs-attr">runs-on:</span> <span class="hljs-string">ubuntu-latest</span></span>
+<span class="line"></span>
+<span class="line">    <span class="hljs-attr">env:</span></span>
+<span class="line">      <span class="hljs-attr">ORG:</span> <span class="hljs-string">${{</span> <span class="hljs-string">vars.TARGET_ORG</span> <span class="hljs-string">}}</span></span>
+<span class="line">      <span class="hljs-attr">REPO_NAME:</span> <span class="hljs-string">${{</span> <span class="hljs-string">inputs.target_repo</span> <span class="hljs-string">}}</span></span>
+<span class="line">      <span class="hljs-attr">MODEL:</span> <span class="hljs-string">${{</span> <span class="hljs-string">vars.MODERNIZE_MODEL</span> <span class="hljs-string">}}</span></span>
+<span class="line">      <span class="hljs-attr">DRY_RUN:</span> <span class="hljs-string">${{</span> <span class="hljs-string">inputs.dry_run</span> <span class="hljs-string">}}</span></span>
+<span class="line">      <span class="hljs-attr">GH_TOKEN:</span> <span class="hljs-string">${{</span> <span class="hljs-string">secrets.GH_PAT</span> <span class="hljs-string">}}</span></span>
+<span class="line"></span>
+<span class="line">    <span class="hljs-attr">steps:</span></span>
+<span class="line">      <span class="hljs-comment"># ── Validate inputs ────────────────────────────────────────────────</span></span>
+<span class="line">      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Validate</span> <span class="hljs-string">inputs</span></span>
+<span class="line">        <span class="hljs-attr">run:</span> <span class="hljs-string">|</span></span>
+<span class="line">          <span class="hljs-string">if</span> [[ <span class="hljs-string">-z</span> <span class="hljs-string">&quot;$ORG&quot;</span> ]]<span class="hljs-string">;</span> <span class="hljs-string">then</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;::error::TARGET_ORG repo variable is not set.&quot;</span></span>
+<span class="line">            <span class="hljs-string">exit</span> <span class="hljs-number">1</span></span>
+<span class="line">          <span class="hljs-string">fi</span></span>
+<span class="line">          <span class="hljs-string">if</span> [[ <span class="hljs-string">-z</span> <span class="hljs-string">&quot;$REPO_NAME&quot;</span> ]]<span class="hljs-string">;</span> <span class="hljs-string">then</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;::error::target_repo input is required.&quot;</span></span>
+<span class="line">            <span class="hljs-string">exit</span> <span class="hljs-number">1</span></span>
+<span class="line">          <span class="hljs-string">fi</span></span>
+<span class="line"></span>
+<span class="line">          <span class="hljs-string">echo</span> <span class="hljs-string">&quot;🏢 Organization: $ORG&quot;</span></span>
+<span class="line">          <span class="hljs-string">echo</span> <span class="hljs-string">&quot;📦 Target repo: $REPO_NAME&quot;</span></span>
+<span class="line">          <span class="hljs-string">echo</span> <span class="hljs-string">&quot;🤖 Model: ${MODEL:-&lt;default&gt;}&quot;</span></span>
+<span class="line">          <span class="hljs-string">echo</span> <span class="hljs-string">&quot;🧪 Dry run: $DRY_RUN&quot;</span></span>
+<span class="line"></span>
+<span class="line">      <span class="hljs-comment"># ── Dry-run summary ────────────────────────────────────────────────</span></span>
+<span class="line">      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Show</span> <span class="hljs-string">dry-run</span> <span class="hljs-string">plan</span></span>
+<span class="line">        <span class="hljs-attr">if:</span> <span class="hljs-string">inputs.dry_run</span> <span class="hljs-string">==</span> <span class="hljs-literal">true</span></span>
+<span class="line">        <span class="hljs-attr">run:</span> <span class="hljs-string">|</span></span>
+<span class="line">          {</span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;## 🧪 Dry Run — Assessment Plan&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;| Parameter | Value |&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;|-----------|-------|&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;| Repository | \`$ORG/$REPO_NAME\` |&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;| Branch | \`ghcp-mod\` |&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;| Model | \`${MODEL:-default}\` |&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;| Output path | \`./ghcp-mod-assessment\` |&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;### Steps that **would** execute:&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;1. Install \`@modernize/cli\` globally&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;2. Clone \`$ORG/$REPO_NAME\`&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;3. Create &amp; checkout \`ghcp-mod\` branch&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;4. Run \`modernize assess --source . --output-path ./ghcp-mod-assessment --no-tty\`&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;5. Commit assessment output&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;6. Push \`ghcp-mod\` branch&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;&gt; ⚠️ **No changes were made.** Re-run with \`dry_run: false\` to execute.&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;_Run at $(date -u &#x27;+%Y-%m-%d %H:%M UTC&#x27;) by @$<span class="hljs-template-variable">{{ github.actor }}</span>_&quot;</span></span>
+<span class="line">          } <span class="hljs-string">&gt;&gt;</span> <span class="hljs-string">&quot;$GITHUB_STEP_SUMMARY&quot;</span></span>
+<span class="line"></span>
+<span class="line">          <span class="hljs-string">echo</span> <span class="hljs-string">&quot;✅ Dry-run plan generated. Exiting.&quot;</span></span>
+<span class="line"></span>
+<span class="line">      <span class="hljs-comment"># ── Install modernize CLI ──────────────────────────────────────────</span></span>
+<span class="line">      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Install</span> <span class="hljs-string">modernize</span> <span class="hljs-string">CLI</span></span>
+<span class="line">        <span class="hljs-attr">if:</span> <span class="hljs-string">inputs.dry_run</span> <span class="hljs-string">==</span> <span class="hljs-literal">false</span></span>
+<span class="line">        <span class="hljs-attr">run:</span> <span class="hljs-string">|</span></span>
+<span class="line">          <span class="hljs-string">echo</span> <span class="hljs-string">&quot;📦 Installing modernize CLI ...&quot;</span></span>
+<span class="line">          <span class="hljs-string">npm</span> <span class="hljs-string">install</span> <span class="hljs-string">-g</span> <span class="hljs-string">@modernize/cli</span></span>
+<span class="line">          <span class="hljs-string">echo</span> <span class="hljs-string">&quot;✅ modernize CLI installed.&quot;</span></span>
+<span class="line">          <span class="hljs-string">modernize</span> <span class="hljs-string">--version</span> <span class="hljs-string">||</span> <span class="hljs-string">echo</span> <span class="hljs-string">&quot;⚠️  Version check not available&quot;</span></span>
+<span class="line"></span>
+<span class="line">      <span class="hljs-comment"># ── Clone the target repo ──────────────────────────────────────────</span></span>
+<span class="line">      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Clone</span> <span class="hljs-string">target</span> <span class="hljs-string">repository</span></span>
+<span class="line">        <span class="hljs-attr">if:</span> <span class="hljs-string">inputs.dry_run</span> <span class="hljs-string">==</span> <span class="hljs-literal">false</span></span>
+<span class="line">        <span class="hljs-attr">run:</span> <span class="hljs-string">|</span></span>
+<span class="line">          <span class="hljs-string">echo</span> <span class="hljs-string">&quot;📥 Cloning $ORG/$REPO_NAME ...&quot;</span></span>
+<span class="line">          <span class="hljs-string">gh</span> <span class="hljs-string">repo</span> <span class="hljs-string">clone</span> <span class="hljs-string">&quot;$ORG/$REPO_NAME&quot;</span> <span class="hljs-string">target-repo</span></span>
+<span class="line">          <span class="hljs-string">echo</span> <span class="hljs-string">&quot;✅ Repository cloned.&quot;</span></span>
+<span class="line"></span>
+<span class="line">      <span class="hljs-comment"># ── Create ghcp-mod branch ─────────────────────────────────────────</span></span>
+<span class="line">      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Create</span> <span class="hljs-string">ghcp-mod</span> <span class="hljs-string">branch</span></span>
+<span class="line">        <span class="hljs-attr">if:</span> <span class="hljs-string">inputs.dry_run</span> <span class="hljs-string">==</span> <span class="hljs-literal">false</span></span>
+<span class="line">        <span class="hljs-attr">working-directory:</span> <span class="hljs-string">target-repo</span></span>
+<span class="line">        <span class="hljs-attr">run:</span> <span class="hljs-string">|</span></span>
+<span class="line">          <span class="hljs-string">echo</span> <span class="hljs-string">&quot;🌿 Creating ghcp-mod branch ...&quot;</span></span>
+<span class="line"></span>
+<span class="line">          <span class="hljs-comment"># Check if the remote branch already exists</span></span>
+<span class="line">          <span class="hljs-string">if</span> <span class="hljs-string">git</span> <span class="hljs-string">ls-remote</span> <span class="hljs-string">--heads</span> <span class="hljs-string">origin</span> <span class="hljs-string">ghcp-mod</span> <span class="hljs-string">|</span> <span class="hljs-string">grep</span> <span class="hljs-string">-q</span> <span class="hljs-string">ghcp-mod;</span> <span class="hljs-string">then</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;ℹ️  Branch ghcp-mod already exists on remote. Checking out.&quot;</span></span>
+<span class="line">            <span class="hljs-string">git</span> <span class="hljs-string">fetch</span> <span class="hljs-string">origin</span> <span class="hljs-string">ghcp-mod</span></span>
+<span class="line">            <span class="hljs-string">git</span> <span class="hljs-string">checkout</span> <span class="hljs-string">ghcp-mod</span></span>
+<span class="line">          <span class="hljs-string">else</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;🆕 Creating new branch ghcp-mod.&quot;</span></span>
+<span class="line">            <span class="hljs-string">git</span> <span class="hljs-string">checkout</span> <span class="hljs-string">-b</span> <span class="hljs-string">ghcp-mod</span></span>
+<span class="line">          <span class="hljs-string">fi</span></span>
+<span class="line"></span>
+<span class="line">          <span class="hljs-string">echo</span> <span class="hljs-string">&quot;✅ On branch: $(git branch --show-current)&quot;</span></span>
+<span class="line"></span>
+<span class="line">      <span class="hljs-comment"># ── Run the assessment ─────────────────────────────────────────────</span></span>
+<span class="line">      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Run</span> <span class="hljs-string">modernize</span> <span class="hljs-string">assessment</span></span>
+<span class="line">        <span class="hljs-attr">if:</span> <span class="hljs-string">inputs.dry_run</span> <span class="hljs-string">==</span> <span class="hljs-literal">false</span></span>
+<span class="line">        <span class="hljs-attr">working-directory:</span> <span class="hljs-string">target-repo</span></span>
+<span class="line">        <span class="hljs-attr">run:</span> <span class="hljs-string">|</span></span>
+<span class="line">          <span class="hljs-string">echo</span> <span class="hljs-string">&quot;🔍 Running modernize assessment ...&quot;</span></span>
+<span class="line"></span>
+<span class="line">          <span class="hljs-comment"># Build the command</span></span>
+<span class="line">          <span class="hljs-string">CMD=&quot;modernize</span> <span class="hljs-string">assess</span> <span class="hljs-string">--source</span> <span class="hljs-string">.</span> <span class="hljs-string">--output-path</span> <span class="hljs-string">./ghcp-mod-assessment</span> <span class="hljs-string">--no-tty&quot;</span></span>
+<span class="line"></span>
+<span class="line">          <span class="hljs-comment"># Add model flag if configured</span></span>
+<span class="line">          <span class="hljs-string">if</span> [[ <span class="hljs-string">-n</span> <span class="hljs-string">&quot;$MODEL&quot;</span> ]]<span class="hljs-string">;</span> <span class="hljs-string">then</span></span>
+<span class="line">            <span class="hljs-string">CMD=&quot;$CMD</span> <span class="hljs-string">--model</span> <span class="hljs-string">$MODEL&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;🤖 Using model: $MODEL&quot;</span></span>
+<span class="line">          <span class="hljs-string">fi</span></span>
+<span class="line"></span>
+<span class="line">          <span class="hljs-string">echo</span> <span class="hljs-string">&quot;▶️ Command: $CMD&quot;</span></span>
+<span class="line">          <span class="hljs-string">eval</span> <span class="hljs-string">&quot;$CMD&quot;</span></span>
+<span class="line"></span>
+<span class="line">          <span class="hljs-string">echo</span> <span class="hljs-string">&quot;✅ Assessment complete.&quot;</span></span>
+<span class="line"></span>
+<span class="line">          <span class="hljs-comment"># Verify output was created</span></span>
+<span class="line">          <span class="hljs-string">if</span> [[ <span class="hljs-string">-d</span> <span class="hljs-string">./ghcp-mod-assessment</span> ]]<span class="hljs-string">;</span> <span class="hljs-string">then</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;📂 Assessment output:&quot;</span></span>
+<span class="line">            <span class="hljs-string">ls</span> <span class="hljs-string">-la</span> <span class="hljs-string">./ghcp-mod-assessment/</span></span>
+<span class="line">          <span class="hljs-string">else</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;::error::Assessment output directory not found!&quot;</span></span>
+<span class="line">            <span class="hljs-string">exit</span> <span class="hljs-number">1</span></span>
+<span class="line">          <span class="hljs-string">fi</span></span>
+<span class="line"></span>
+<span class="line">      <span class="hljs-comment"># ── Commit results ─────────────────────────────────────────────────</span></span>
+<span class="line">      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Commit</span> <span class="hljs-string">assessment</span> <span class="hljs-string">results</span></span>
+<span class="line">        <span class="hljs-attr">if:</span> <span class="hljs-string">inputs.dry_run</span> <span class="hljs-string">==</span> <span class="hljs-literal">false</span></span>
+<span class="line">        <span class="hljs-attr">working-directory:</span> <span class="hljs-string">target-repo</span></span>
+<span class="line">        <span class="hljs-attr">run:</span> <span class="hljs-string">|</span></span>
+<span class="line">          <span class="hljs-string">echo</span> <span class="hljs-string">&quot;💾 Committing assessment results ...&quot;</span></span>
+<span class="line"></span>
+<span class="line">          <span class="hljs-string">git</span> <span class="hljs-string">config</span> <span class="hljs-string">user.name</span> <span class="hljs-string">&quot;github-actions[bot]&quot;</span></span>
+<span class="line">          <span class="hljs-string">git</span> <span class="hljs-string">config</span> <span class="hljs-string">user.email</span> <span class="hljs-string">&quot;github-actions[bot]@users.noreply.github.com&quot;</span></span>
+<span class="line"></span>
+<span class="line">          <span class="hljs-string">git</span> <span class="hljs-string">add</span> <span class="hljs-string">ghcp-mod-assessment/</span></span>
+<span class="line">          <span class="hljs-string">git</span> <span class="hljs-string">status</span></span>
+<span class="line"></span>
+<span class="line">          <span class="hljs-comment"># Only commit if there are changes</span></span>
+<span class="line">          <span class="hljs-string">if</span> <span class="hljs-string">git</span> <span class="hljs-string">diff</span> <span class="hljs-string">--cached</span> <span class="hljs-string">--quiet;</span> <span class="hljs-string">then</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;ℹ️  No new changes to commit (assessment may already exist).&quot;</span></span>
+<span class="line">          <span class="hljs-string">else</span></span>
+<span class="line">            <span class="hljs-string">git</span> <span class="hljs-string">commit</span> <span class="hljs-string">-m</span> <span class="hljs-string">&quot;🔍 Add GHCP modernization assessment</span>
+<span class="line"></span>
+<span class="line">          Automated assessment generated by the modernize CLI.</span>
+<span class="line">          Repository: $ORG/$REPO_NAME</span>
+<span class="line">          Model: ${MODEL:-default}</span>
+<span class="line">          Run by: @$<span class="hljs-template-variable">{{ github.actor }}</span>&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;✅ Changes committed.&quot;</span></span>
+<span class="line">          <span class="hljs-string">fi</span></span>
+<span class="line"></span>
+<span class="line">      <span class="hljs-comment"># ── Push branch ────────────────────────────────────────────────────</span></span>
+<span class="line">      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Push</span> <span class="hljs-string">ghcp-mod</span> <span class="hljs-string">branch</span></span>
+<span class="line">        <span class="hljs-attr">if:</span> <span class="hljs-string">inputs.dry_run</span> <span class="hljs-string">==</span> <span class="hljs-literal">false</span></span>
+<span class="line">        <span class="hljs-attr">working-directory:</span> <span class="hljs-string">target-repo</span></span>
+<span class="line">        <span class="hljs-attr">run:</span> <span class="hljs-string">|</span></span>
+<span class="line">          <span class="hljs-string">echo</span> <span class="hljs-string">&quot;🚀 Pushing ghcp-mod branch ...&quot;</span></span>
+<span class="line">          <span class="hljs-string">git</span> <span class="hljs-string">push</span> <span class="hljs-string">origin</span> <span class="hljs-string">ghcp-mod</span> <span class="hljs-string">--force-with-lease</span></span>
+<span class="line">          <span class="hljs-string">echo</span> <span class="hljs-string">&quot;✅ Branch pushed to $ORG/$REPO_NAME.&quot;</span></span>
+<span class="line"></span>
+<span class="line">      <span class="hljs-comment"># ── Job summary ────────────────────────────────────────────────────</span></span>
+<span class="line">      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Write</span> <span class="hljs-string">job</span> <span class="hljs-string">summary</span></span>
+<span class="line">        <span class="hljs-attr">if:</span> <span class="hljs-string">inputs.dry_run</span> <span class="hljs-string">==</span> <span class="hljs-literal">false</span></span>
+<span class="line">        <span class="hljs-attr">run:</span> <span class="hljs-string">|</span></span>
+<span class="line">          {</span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;## ✅ Assessment Complete — \`$ORG/$REPO_NAME\`&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;| Detail | Value |&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;|--------|-------|&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;| Repository | [\`$ORG/$REPO_NAME\`](https://github.com/$ORG/$REPO_NAME) |&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;| Branch | \`ghcp-mod\` |&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;| Model | \`${MODEL:-default}\` |&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;| Output | \`ghcp-mod-assessment/\` |&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;### 📂 Assessment files&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;\`\`\`&quot;</span></span>
+<span class="line">            <span class="hljs-string">ls</span> <span class="hljs-string">-la</span> <span class="hljs-string">target-repo/ghcp-mod-assessment/</span> <span class="hljs-number">2</span><span class="hljs-string">&gt;/dev/null</span> <span class="hljs-string">||</span> <span class="hljs-string">echo</span> <span class="hljs-string">&quot;No files listed&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;\`\`\`&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;### Next steps&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;- Run **04 · Create PR** to open a pull request with the findings.&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;_Run at $(date -u &#x27;+%Y-%m-%d %H:%M UTC&#x27;) by @$<span class="hljs-template-variable">{{ github.actor }}</span>_&quot;</span></span>
+<span class="line">          } <span class="hljs-string">&gt;&gt;</span> <span class="hljs-string">&quot;$GITHUB_STEP_SUMMARY&quot;</span></span>
+<span class="line"></span></code></pre>
+</div>
+</body>
+</html>

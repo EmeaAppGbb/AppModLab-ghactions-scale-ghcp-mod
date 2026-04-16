@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>01-discover-repos.yml</title>
+<style>
+  body {
+    margin: 0; padding: 0;
+    background: #0d1117;
+    font-family: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', 'Consolas', monospace;
+  }
+  .container {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 24px;
+  }
+  .header {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 6px 6px 0 0;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+  .dot-red { background: #ff5f56; }
+  .dot-yellow { background: #ffbd2e; }
+  .dot-green { background: #27c93f; }
+  .filename {
+    color: #8b949e;
+    font-size: 13px;
+    margin-left: 8px;
+  }
+  .badge {
+    background: #238636;
+    color: #fff;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-left: auto;
+  }
+  pre {
+    margin: 0;
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-top: none;
+    border-radius: 0 0 6px 6px;
+    padding: 16px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  code { font-family: inherit; }
+  /* GitHub Dark theme for highlight.js */
+  .hljs { color: #c9d1d9; background: #0d1117; }
+  .hljs-comment, .hljs-quote { color: #8b949e; font-style: italic; }
+  .hljs-keyword, .hljs-selector-tag { color: #ff7b72; }
+  .hljs-string, .hljs-addition { color: #a5d6ff; }
+  .hljs-number, .hljs-literal { color: #79c0ff; }
+  .hljs-built_in { color: #d2a8ff; }
+  .hljs-attr, .hljs-variable, .hljs-template-variable { color: #79c0ff; }
+  .hljs-type, .hljs-title { color: #d2a8ff; }
+  .hljs-section { color: #d2a8ff; font-weight: bold; }
+  .hljs-name, .hljs-selector-id, .hljs-selector-class { color: #7ee787; }
+  .hljs-deletion { color: #ffa198; background: rgba(248,81,73,0.15); }
+  .hljs-emphasis { font-style: italic; }
+  .hljs-strong { font-weight: bold; }
+  .hljs-bullet { color: #f2cc60; }
+  .line-numbers {
+    counter-reset: line;
+  }
+  .line-numbers .line::before {
+    counter-increment: line;
+    content: counter(line);
+    display: inline-block;
+    width: 3em;
+    margin-right: 1em;
+    text-align: right;
+    color: #484f58;
+    user-select: none;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <span class="dot dot-red"></span>
+    <span class="dot dot-yellow"></span>
+    <span class="dot dot-green"></span>
+    <span class="filename">.github/workflows/01-discover-repos.yml</span>
+    <span class="badge">YAML</span>
+  </div>
+  <pre><code class="line-numbers"><span class="line"><span class="hljs-comment"># ============================================================================</span></span>
+<span class="line"><span class="hljs-comment"># 01-discover-repos.yml — Discovery Workflow</span></span>
+<span class="line"><span class="hljs-comment"># ============================================================================</span></span>
+<span class="line"><span class="hljs-comment"># Lists all repositories in the target GitHub organization, shows their</span></span>
+<span class="line"><span class="hljs-comment"># primary language, and outputs a summary table in the job summary.</span></span>
+<span class="line"><span class="hljs-comment">#</span></span>
+<span class="line"><span class="hljs-comment"># Repository variables:</span></span>
+<span class="line"><span class="hljs-comment">#   TARGET_ORG — GitHub organization to scan</span></span>
+<span class="line"><span class="hljs-comment">#</span></span>
+<span class="line"><span class="hljs-comment"># Secrets:</span></span>
+<span class="line"><span class="hljs-comment">#   GH_PAT — Personal Access Token with repo + org:read scopes</span></span>
+<span class="line"><span class="hljs-comment"># ============================================================================</span></span>
+<span class="line"></span>
+<span class="line"><span class="hljs-attr">name:</span> <span class="hljs-string">&quot;01 · Discover Repos&quot;</span></span>
+<span class="line"></span>
+<span class="line"><span class="hljs-attr">on:</span></span>
+<span class="line">  <span class="hljs-attr">workflow_dispatch:</span></span>
+<span class="line">    <span class="hljs-attr">inputs:</span></span>
+<span class="line">      <span class="hljs-attr">target_org:</span></span>
+<span class="line">        <span class="hljs-attr">description:</span> <span class="hljs-string">&quot;GitHub org to scan (overrides repo variable TARGET_ORG)&quot;</span></span>
+<span class="line">        <span class="hljs-attr">required:</span> <span class="hljs-literal">false</span></span>
+<span class="line">        <span class="hljs-attr">type:</span> <span class="hljs-string">string</span></span>
+<span class="line"></span>
+<span class="line"><span class="hljs-comment"># Prevent duplicate discovery runs</span></span>
+<span class="line"><span class="hljs-attr">concurrency:</span></span>
+<span class="line">  <span class="hljs-attr">group:</span> <span class="hljs-string">discover-repos-${{</span> <span class="hljs-string">github.ref</span> <span class="hljs-string">}}</span></span>
+<span class="line">  <span class="hljs-attr">cancel-in-progress:</span> <span class="hljs-literal">true</span></span>
+<span class="line"></span>
+<span class="line"><span class="hljs-attr">jobs:</span></span>
+<span class="line">  <span class="hljs-attr">discover:</span></span>
+<span class="line">    <span class="hljs-attr">name:</span> <span class="hljs-string">&quot;List organization repositories&quot;</span></span>
+<span class="line">    <span class="hljs-attr">runs-on:</span> <span class="hljs-string">ubuntu-latest</span></span>
+<span class="line"></span>
+<span class="line">    <span class="hljs-attr">env:</span></span>
+<span class="line">      <span class="hljs-comment"># Input takes precedence over the repo variable</span></span>
+<span class="line">      <span class="hljs-attr">ORG:</span> <span class="hljs-string">${{</span> <span class="hljs-string">inputs.target_org</span> <span class="hljs-string">||</span> <span class="hljs-string">vars.TARGET_ORG</span> <span class="hljs-string">}}</span></span>
+<span class="line">      <span class="hljs-attr">GH_TOKEN:</span> <span class="hljs-string">${{</span> <span class="hljs-string">secrets.GH_PAT</span> <span class="hljs-string">}}</span></span>
+<span class="line"></span>
+<span class="line">    <span class="hljs-attr">steps:</span></span>
+<span class="line">      <span class="hljs-comment"># ── Validate inputs ────────────────────────────────────────────────</span></span>
+<span class="line">      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Validate</span> <span class="hljs-string">organization</span> <span class="hljs-string">name</span></span>
+<span class="line">        <span class="hljs-attr">run:</span> <span class="hljs-string">|</span></span>
+<span class="line">          <span class="hljs-string">if</span> [[ <span class="hljs-string">-z</span> <span class="hljs-string">&quot;$ORG&quot;</span> ]]<span class="hljs-string">;</span> <span class="hljs-string">then</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;::error::No target org specified. Set the TARGET_ORG repo variable or pass target_org input.&quot;</span></span>
+<span class="line">            <span class="hljs-string">exit</span> <span class="hljs-number">1</span></span>
+<span class="line">          <span class="hljs-string">fi</span></span>
+<span class="line">          <span class="hljs-string">echo</span> <span class="hljs-string">&quot;🏢 Target organization: **$ORG**&quot;</span> <span class="hljs-string">&gt;&gt;</span> <span class="hljs-string">&quot;$GITHUB_STEP_SUMMARY&quot;</span></span>
+<span class="line"></span>
+<span class="line">      <span class="hljs-comment"># ── Fetch repo list via GitHub CLI ─────────────────────────────────</span></span>
+<span class="line">      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">List</span> <span class="hljs-string">repos</span> <span class="hljs-string">in</span> <span class="hljs-string">organization</span></span>
+<span class="line">        <span class="hljs-attr">id:</span> <span class="hljs-string">list</span></span>
+<span class="line">        <span class="hljs-attr">run:</span> <span class="hljs-string">|</span></span>
+<span class="line">          <span class="hljs-string">echo</span> <span class="hljs-string">&quot;📡 Fetching repositories for org: $ORG ...&quot;</span></span>
+<span class="line"></span>
+<span class="line">          <span class="hljs-comment"># Fetch repos as JSON — name, primary language, visibility, archived flag</span></span>
+<span class="line">          <span class="hljs-string">gh</span> <span class="hljs-string">repo</span> <span class="hljs-string">list</span> <span class="hljs-string">&quot;$ORG&quot;</span> <span class="hljs-string">\</span></span>
+<span class="line">            <span class="hljs-string">--json</span> <span class="hljs-string">name,primaryLanguage,visibility,isArchived</span> <span class="hljs-string">\</span></span>
+<span class="line">            <span class="hljs-string">--limit</span> <span class="hljs-number">1000</span> <span class="hljs-string">\</span></span>
+<span class="line">            <span class="hljs-string">--no-archived</span> <span class="hljs-string">\</span></span>
+<span class="line">            <span class="hljs-string">&gt;</span> <span class="hljs-string">repos.json</span></span>
+<span class="line"></span>
+<span class="line">          <span class="hljs-string">TOTAL=$(jq</span> <span class="hljs-string">length</span> <span class="hljs-string">repos.json)</span></span>
+<span class="line">          <span class="hljs-string">echo</span> <span class="hljs-string">&quot;total=$TOTAL&quot;</span> <span class="hljs-string">&gt;&gt;</span> <span class="hljs-string">&quot;$GITHUB_OUTPUT&quot;</span></span>
+<span class="line">          <span class="hljs-string">echo</span> <span class="hljs-string">&quot;✅ Found $TOTAL non-archived repositories.&quot;</span></span>
+<span class="line"></span>
+<span class="line">      <span class="hljs-comment"># ── Build summary table ────────────────────────────────────────────</span></span>
+<span class="line">      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Generate</span> <span class="hljs-string">summary</span> <span class="hljs-string">table</span></span>
+<span class="line">        <span class="hljs-attr">run:</span> <span class="hljs-string">|</span></span>
+<span class="line">          <span class="hljs-string">TOTAL=${{</span> <span class="hljs-string">steps.list.outputs.total</span> <span class="hljs-string">}}</span></span>
+<span class="line"></span>
+<span class="line">          {</span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;## 📋 Repository Discovery — \`$ORG\`&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;| # | Repository | Language | Visibility |&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;|---|-----------|----------|------------|&quot;</span></span>
+<span class="line"></span>
+<span class="line">            <span class="hljs-comment"># Iterate over repos and build markdown rows</span></span>
+<span class="line">            <span class="hljs-string">jq</span> <span class="hljs-string">-r</span> <span class="hljs-string">&#x27;sort_by(.name) | to_entries[] |</span>
+<span class="line">              &quot;| \(.key + 1) | \(.value.name) | \(.value.primaryLanguage.name // &quot;—&quot;) | \(.value.visibility) |&quot;</span>
+<span class="line">            &#x27;</span> <span class="hljs-string">repos.json</span></span>
+<span class="line"></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;---&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;&quot;</span></span>
+<span class="line"></span>
+<span class="line">            <span class="hljs-comment"># Language breakdown</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;### 📊 Language Breakdown&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;| Language | Count |&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;|----------|-------|&quot;</span></span>
+<span class="line">            <span class="hljs-string">jq</span> <span class="hljs-string">-r</span> <span class="hljs-string">&#x27;</span>
+<span class="line">              group_by(.primaryLanguage.name // &quot;Unknown&quot;)</span>
+<span class="line">              | map({lang: .[0].primaryLanguage.name // &quot;Unknown&quot;, count: length})</span>
+<span class="line">              | sort_by(-.count)[]</span>
+<span class="line">              | &quot;| \(.lang) | \(.count) |&quot;</span>
+<span class="line">            &#x27;</span> <span class="hljs-string">repos.json</span></span>
+<span class="line"></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;&gt; **Total non-archived repos: $TOTAL**&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;_Run at $(date -u &#x27;+%Y-%m-%d %H:%M UTC&#x27;) by @$<span class="hljs-template-variable">{{ github.actor }}</span>_&quot;</span></span>
+<span class="line">          } <span class="hljs-string">&gt;&gt;</span> <span class="hljs-string">&quot;$GITHUB_STEP_SUMMARY&quot;</span></span>
+<span class="line"></span>
+<span class="line">          <span class="hljs-string">echo</span> <span class="hljs-string">&quot;📊 Summary written to job summary.&quot;</span></span>
+<span class="line"></span></code></pre>
+</div>
+</body>
+</html>

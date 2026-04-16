@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>02-filter-repos.yml</title>
+<style>
+  body {
+    margin: 0; padding: 0;
+    background: #0d1117;
+    font-family: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', 'Consolas', monospace;
+  }
+  .container {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 24px;
+  }
+  .header {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 6px 6px 0 0;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+  .dot-red { background: #ff5f56; }
+  .dot-yellow { background: #ffbd2e; }
+  .dot-green { background: #27c93f; }
+  .filename {
+    color: #8b949e;
+    font-size: 13px;
+    margin-left: 8px;
+  }
+  .badge {
+    background: #238636;
+    color: #fff;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-left: auto;
+  }
+  pre {
+    margin: 0;
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-top: none;
+    border-radius: 0 0 6px 6px;
+    padding: 16px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  code { font-family: inherit; }
+  /* GitHub Dark theme for highlight.js */
+  .hljs { color: #c9d1d9; background: #0d1117; }
+  .hljs-comment, .hljs-quote { color: #8b949e; font-style: italic; }
+  .hljs-keyword, .hljs-selector-tag { color: #ff7b72; }
+  .hljs-string, .hljs-addition { color: #a5d6ff; }
+  .hljs-number, .hljs-literal { color: #79c0ff; }
+  .hljs-built_in { color: #d2a8ff; }
+  .hljs-attr, .hljs-variable, .hljs-template-variable { color: #79c0ff; }
+  .hljs-type, .hljs-title { color: #d2a8ff; }
+  .hljs-section { color: #d2a8ff; font-weight: bold; }
+  .hljs-name, .hljs-selector-id, .hljs-selector-class { color: #7ee787; }
+  .hljs-deletion { color: #ffa198; background: rgba(248,81,73,0.15); }
+  .hljs-emphasis { font-style: italic; }
+  .hljs-strong { font-weight: bold; }
+  .hljs-bullet { color: #f2cc60; }
+  .line-numbers {
+    counter-reset: line;
+  }
+  .line-numbers .line::before {
+    counter-increment: line;
+    content: counter(line);
+    display: inline-block;
+    width: 3em;
+    margin-right: 1em;
+    text-align: right;
+    color: #484f58;
+    user-select: none;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <span class="dot dot-red"></span>
+    <span class="dot dot-yellow"></span>
+    <span class="dot dot-green"></span>
+    <span class="filename">.github/workflows/02-filter-repos.yml</span>
+    <span class="badge">YAML</span>
+  </div>
+  <pre><code class="line-numbers"><span class="line"><span class="hljs-comment"># ============================================================================</span></span>
+<span class="line"><span class="hljs-comment"># 02-filter-repos.yml — Filter &amp; Prepare Workflow</span></span>
+<span class="line"><span class="hljs-comment"># ============================================================================</span></span>
+<span class="line"><span class="hljs-comment"># Applies language and blacklist filters to the org&#x27;s repos, producing a</span></span>
+<span class="line"><span class="hljs-comment"># curated list of repositories that would be targeted for modernization.</span></span>
+<span class="line"><span class="hljs-comment">#</span></span>
+<span class="line"><span class="hljs-comment"># Repository variables:</span></span>
+<span class="line"><span class="hljs-comment">#   TARGET_ORG        — GitHub organization to scan</span></span>
+<span class="line"><span class="hljs-comment">#   BLACKLIST_REPOS   — Comma-separated list of repo names to exclude</span></span>
+<span class="line"><span class="hljs-comment">#   TARGET_LANGUAGES  — Default language filter (java/dotnet/both)</span></span>
+<span class="line"><span class="hljs-comment">#</span></span>
+<span class="line"><span class="hljs-comment"># Secrets:</span></span>
+<span class="line"><span class="hljs-comment">#   GH_PAT — Personal Access Token with repo + org:read scopes</span></span>
+<span class="line"><span class="hljs-comment"># ============================================================================</span></span>
+<span class="line"></span>
+<span class="line"><span class="hljs-attr">name:</span> <span class="hljs-string">&quot;02 · Filter &amp; Prepare&quot;</span></span>
+<span class="line"></span>
+<span class="line"><span class="hljs-attr">on:</span></span>
+<span class="line">  <span class="hljs-attr">workflow_dispatch:</span></span>
+<span class="line">    <span class="hljs-attr">inputs:</span></span>
+<span class="line">      <span class="hljs-attr">language_filter:</span></span>
+<span class="line">        <span class="hljs-attr">description:</span> <span class="hljs-string">&quot;Language filter&quot;</span></span>
+<span class="line">        <span class="hljs-attr">required:</span> <span class="hljs-literal">true</span></span>
+<span class="line">        <span class="hljs-attr">type:</span> <span class="hljs-string">choice</span></span>
+<span class="line">        <span class="hljs-attr">options:</span></span>
+<span class="line">          <span class="hljs-bullet">-</span> <span class="hljs-string">java</span></span>
+<span class="line">          <span class="hljs-bullet">-</span> <span class="hljs-string">dotnet</span></span>
+<span class="line">          <span class="hljs-bullet">-</span> <span class="hljs-string">both</span></span>
+<span class="line">        <span class="hljs-attr">default:</span> <span class="hljs-string">both</span></span>
+<span class="line">      <span class="hljs-attr">dry_run:</span></span>
+<span class="line">        <span class="hljs-attr">description:</span> <span class="hljs-string">&quot;Dry run — show what would be targeted without side effects&quot;</span></span>
+<span class="line">        <span class="hljs-attr">required:</span> <span class="hljs-literal">false</span></span>
+<span class="line">        <span class="hljs-attr">type:</span> <span class="hljs-string">boolean</span></span>
+<span class="line">        <span class="hljs-attr">default:</span> <span class="hljs-literal">true</span></span>
+<span class="line"></span>
+<span class="line"><span class="hljs-comment"># Prevent duplicate filter runs</span></span>
+<span class="line"><span class="hljs-attr">concurrency:</span></span>
+<span class="line">  <span class="hljs-attr">group:</span> <span class="hljs-string">filter-repos-${{</span> <span class="hljs-string">github.ref</span> <span class="hljs-string">}}</span></span>
+<span class="line">  <span class="hljs-attr">cancel-in-progress:</span> <span class="hljs-literal">true</span></span>
+<span class="line"></span>
+<span class="line"><span class="hljs-attr">jobs:</span></span>
+<span class="line">  <span class="hljs-attr">filter:</span></span>
+<span class="line">    <span class="hljs-attr">name:</span> <span class="hljs-string">&quot;Filter repositories by language &amp; blacklist&quot;</span></span>
+<span class="line">    <span class="hljs-attr">runs-on:</span> <span class="hljs-string">ubuntu-latest</span></span>
+<span class="line"></span>
+<span class="line">    <span class="hljs-attr">env:</span></span>
+<span class="line">      <span class="hljs-attr">ORG:</span> <span class="hljs-string">${{</span> <span class="hljs-string">vars.TARGET_ORG</span> <span class="hljs-string">}}</span></span>
+<span class="line">      <span class="hljs-attr">BLACKLIST:</span> <span class="hljs-string">${{</span> <span class="hljs-string">vars.BLACKLIST_REPOS</span> <span class="hljs-string">}}</span></span>
+<span class="line">      <span class="hljs-attr">LANG_FILTER:</span> <span class="hljs-string">${{</span> <span class="hljs-string">inputs.language_filter</span> <span class="hljs-string">||</span> <span class="hljs-string">vars.TARGET_LANGUAGES</span> <span class="hljs-string">||</span> <span class="hljs-string">&#x27;both&#x27;</span> <span class="hljs-string">}}</span></span>
+<span class="line">      <span class="hljs-attr">DRY_RUN:</span> <span class="hljs-string">${{</span> <span class="hljs-string">inputs.dry_run</span> <span class="hljs-string">}}</span></span>
+<span class="line">      <span class="hljs-attr">GH_TOKEN:</span> <span class="hljs-string">${{</span> <span class="hljs-string">secrets.GH_PAT</span> <span class="hljs-string">}}</span></span>
+<span class="line"></span>
+<span class="line">    <span class="hljs-attr">steps:</span></span>
+<span class="line">      <span class="hljs-comment"># ── Validate inputs ────────────────────────────────────────────────</span></span>
+<span class="line">      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Validate</span> <span class="hljs-string">organization</span> <span class="hljs-string">name</span></span>
+<span class="line">        <span class="hljs-attr">run:</span> <span class="hljs-string">|</span></span>
+<span class="line">          <span class="hljs-string">if</span> [[ <span class="hljs-string">-z</span> <span class="hljs-string">&quot;$ORG&quot;</span> ]]<span class="hljs-string">;</span> <span class="hljs-string">then</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;::error::No target org specified. Set the TARGET_ORG repo variable.&quot;</span></span>
+<span class="line">            <span class="hljs-string">exit</span> <span class="hljs-number">1</span></span>
+<span class="line">          <span class="hljs-string">fi</span></span>
+<span class="line">          <span class="hljs-string">echo</span> <span class="hljs-string">&quot;🏢 Organization: $ORG&quot;</span></span>
+<span class="line">          <span class="hljs-string">echo</span> <span class="hljs-string">&quot;🔤 Language filter: $LANG_FILTER&quot;</span></span>
+<span class="line">          <span class="hljs-string">echo</span> <span class="hljs-string">&quot;🚫 Blacklist: ${BLACKLIST:-&lt;none&gt;}&quot;</span></span>
+<span class="line">          <span class="hljs-string">echo</span> <span class="hljs-string">&quot;🧪 Dry run: $DRY_RUN&quot;</span></span>
+<span class="line"></span>
+<span class="line">      <span class="hljs-comment"># ── Fetch all repos ────────────────────────────────────────────────</span></span>
+<span class="line">      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">List</span> <span class="hljs-string">repos</span> <span class="hljs-string">in</span> <span class="hljs-string">organization</span></span>
+<span class="line">        <span class="hljs-attr">run:</span> <span class="hljs-string">|</span></span>
+<span class="line">          <span class="hljs-string">gh</span> <span class="hljs-string">repo</span> <span class="hljs-string">list</span> <span class="hljs-string">&quot;$ORG&quot;</span> <span class="hljs-string">\</span></span>
+<span class="line">            <span class="hljs-string">--json</span> <span class="hljs-string">name,primaryLanguage,visibility,isArchived</span> <span class="hljs-string">\</span></span>
+<span class="line">            <span class="hljs-string">--limit</span> <span class="hljs-number">1000</span> <span class="hljs-string">\</span></span>
+<span class="line">            <span class="hljs-string">--no-archived</span> <span class="hljs-string">\</span></span>
+<span class="line">            <span class="hljs-string">&gt;</span> <span class="hljs-string">all_repos.json</span></span>
+<span class="line"></span>
+<span class="line">          <span class="hljs-string">echo</span> <span class="hljs-string">&quot;📦 Total repos fetched: $(jq length all_repos.json)&quot;</span></span>
+<span class="line"></span>
+<span class="line">      <span class="hljs-comment"># ── Apply language filter ──────────────────────────────────────────</span></span>
+<span class="line">      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Apply</span> <span class="hljs-string">language</span> <span class="hljs-string">filter</span></span>
+<span class="line">        <span class="hljs-attr">run:</span> <span class="hljs-string">|</span></span>
+<span class="line">          <span class="hljs-comment"># Build jq filter based on language selection</span></span>
+<span class="line">          <span class="hljs-string">case</span> <span class="hljs-string">&quot;$LANG_FILTER&quot;</span> <span class="hljs-string">in</span></span>
+<span class="line">            <span class="hljs-string">java)</span></span>
+<span class="line">              <span class="hljs-string">FILTER=&#x27;.primaryLanguage.name</span> <span class="hljs-string">==</span> <span class="hljs-string">&quot;Java&quot;</span><span class="hljs-string">&#x27;</span>
+<span class="line">              ;;</span>
+<span class="line">            dotnet)</span>
+<span class="line">              # Match C#, F#, VB.NET — common .NET languages</span>
+<span class="line">              FILTER=&#x27;</span><span class="hljs-string">(.primaryLanguage.name</span> <span class="hljs-string">==</span> <span class="hljs-string">&quot;C#&quot;</span><span class="hljs-string">)</span> <span class="hljs-string">or</span> <span class="hljs-string">(.primaryLanguage.name</span> <span class="hljs-string">==</span> <span class="hljs-string">&quot;F#&quot;</span><span class="hljs-string">)</span> <span class="hljs-string">or</span> <span class="hljs-string">(.primaryLanguage.name</span> <span class="hljs-string">==</span> <span class="hljs-string">&quot;Visual Basic .NET&quot;</span><span class="hljs-string">)&#x27;</span></span>
+<span class="line">              <span class="hljs-string">;;</span></span>
+<span class="line">            <span class="hljs-string">both)</span></span>
+<span class="line">              <span class="hljs-string">FILTER=&#x27;(.primaryLanguage.name</span> <span class="hljs-string">==</span> <span class="hljs-string">&quot;Java&quot;</span><span class="hljs-string">)</span> <span class="hljs-string">or</span> <span class="hljs-string">(.primaryLanguage.name</span> <span class="hljs-string">==</span> <span class="hljs-string">&quot;C#&quot;</span><span class="hljs-string">)</span> <span class="hljs-string">or</span> <span class="hljs-string">(.primaryLanguage.name</span> <span class="hljs-string">==</span> <span class="hljs-string">&quot;F#&quot;</span><span class="hljs-string">)</span> <span class="hljs-string">or</span> <span class="hljs-string">(.primaryLanguage.name</span> <span class="hljs-string">==</span> <span class="hljs-string">&quot;Visual Basic .NET&quot;</span><span class="hljs-string">)&#x27;</span></span>
+<span class="line">              <span class="hljs-string">;;</span></span>
+<span class="line">            <span class="hljs-string">*)</span></span>
+<span class="line">              <span class="hljs-string">echo</span> <span class="hljs-string">&quot;::error::Unknown language filter: $LANG_FILTER&quot;</span></span>
+<span class="line">              <span class="hljs-string">exit</span> <span class="hljs-number">1</span></span>
+<span class="line">              <span class="hljs-string">;;</span></span>
+<span class="line">          <span class="hljs-string">esac</span></span>
+<span class="line"></span>
+<span class="line">          <span class="hljs-string">jq</span> <span class="hljs-string">--arg</span> <span class="hljs-string">filter</span> <span class="hljs-string">&quot;$FILTER&quot;</span> <span class="hljs-string">&quot;[ .[] | select($FILTER) ]&quot;</span> <span class="hljs-string">all_repos.json</span> <span class="hljs-string">&gt;</span> <span class="hljs-string">lang_filtered.json</span></span>
+<span class="line">          <span class="hljs-string">echo</span> <span class="hljs-string">&quot;🔤 Repos after language filter: $(jq length lang_filtered.json)&quot;</span></span>
+<span class="line"></span>
+<span class="line">      <span class="hljs-comment"># ── Apply blacklist filter ─────────────────────────────────────────</span></span>
+<span class="line">      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Apply</span> <span class="hljs-string">blacklist</span> <span class="hljs-string">filter</span></span>
+<span class="line">        <span class="hljs-attr">run:</span> <span class="hljs-string">|</span></span>
+<span class="line">          <span class="hljs-string">if</span> [[ <span class="hljs-string">-z</span> <span class="hljs-string">&quot;$BLACKLIST&quot;</span> ]]<span class="hljs-string">;</span> <span class="hljs-string">then</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;ℹ️  No blacklist configured — keeping all repos.&quot;</span></span>
+<span class="line">            <span class="hljs-string">cp</span> <span class="hljs-string">lang_filtered.json</span> <span class="hljs-string">filtered.json</span></span>
+<span class="line">          <span class="hljs-string">else</span></span>
+<span class="line">            <span class="hljs-comment"># Convert comma-separated blacklist into a jq array</span></span>
+<span class="line">            <span class="hljs-string">BLACKLIST_JSON=$(echo</span> <span class="hljs-string">&quot;$BLACKLIST&quot;</span> <span class="hljs-string">|</span> <span class="hljs-string">tr</span> <span class="hljs-string">&#x27;,&#x27;</span> <span class="hljs-string">&#x27;\n&#x27;</span> <span class="hljs-string">|</span> <span class="hljs-string">sed</span> <span class="hljs-string">&#x27;s/^[[:space:]]*//&#x27;</span> <span class="hljs-string">|</span> <span class="hljs-string">sed</span> <span class="hljs-string">&#x27;s/[[:space:]]*$//&#x27;</span> <span class="hljs-string">|</span> <span class="hljs-string">jq</span> <span class="hljs-string">-R</span> <span class="hljs-string">.</span> <span class="hljs-string">|</span> <span class="hljs-string">jq</span> <span class="hljs-string">-s</span> <span class="hljs-string">.)</span></span>
+<span class="line"></span>
+<span class="line">            <span class="hljs-string">jq</span> <span class="hljs-string">--argjson</span> <span class="hljs-string">bl</span> <span class="hljs-string">&quot;$BLACKLIST_JSON&quot;</span> <span class="hljs-string">\</span></span>
+<span class="line">              <span class="hljs-string">&#x27;[ .[] | select(.name as $n | ($bl | index($n)) | not) ]&#x27;</span> <span class="hljs-string">\</span></span>
+<span class="line">              <span class="hljs-string">lang_filtered.json</span> <span class="hljs-string">&gt;</span> <span class="hljs-string">filtered.json</span></span>
+<span class="line"></span>
+<span class="line">            <span class="hljs-string">REMOVED=$((</span> <span class="hljs-string">$(jq</span> <span class="hljs-string">length</span> <span class="hljs-string">lang_filtered.json)</span> <span class="hljs-bullet">-</span> <span class="hljs-string">$(jq</span> <span class="hljs-string">length</span> <span class="hljs-string">filtered.json)</span> <span class="hljs-string">))</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;🚫 Blacklisted $REMOVED repo(s).&quot;</span></span>
+<span class="line">          <span class="hljs-string">fi</span></span>
+<span class="line"></span>
+<span class="line">          <span class="hljs-string">FINAL_COUNT=$(jq</span> <span class="hljs-string">length</span> <span class="hljs-string">filtered.json)</span></span>
+<span class="line">          <span class="hljs-string">echo</span> <span class="hljs-string">&quot;✅ Final filtered count: $FINAL_COUNT&quot;</span></span>
+<span class="line"></span>
+<span class="line">      <span class="hljs-comment"># ── Generate summary ───────────────────────────────────────────────</span></span>
+<span class="line">      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Generate</span> <span class="hljs-string">summary</span> <span class="hljs-string">table</span></span>
+<span class="line">        <span class="hljs-attr">run:</span> <span class="hljs-string">|</span></span>
+<span class="line">          <span class="hljs-string">TOTAL_ALL=$(jq</span> <span class="hljs-string">length</span> <span class="hljs-string">all_repos.json)</span></span>
+<span class="line">          <span class="hljs-string">TOTAL_LANG=$(jq</span> <span class="hljs-string">length</span> <span class="hljs-string">lang_filtered.json)</span></span>
+<span class="line">          <span class="hljs-string">TOTAL_FINAL=$(jq</span> <span class="hljs-string">length</span> <span class="hljs-string">filtered.json)</span></span>
+<span class="line"></span>
+<span class="line">          {</span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;## 🔍 Repository Filter Results — \`$ORG\`&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;&quot;</span></span>
+<span class="line">            <span class="hljs-string">if</span> [[ <span class="hljs-string">&quot;$DRY_RUN&quot;</span> <span class="hljs-string">==</span> <span class="hljs-string">&quot;true&quot;</span> ]]<span class="hljs-string">;</span> <span class="hljs-string">then</span></span>
+<span class="line">              <span class="hljs-string">echo</span> <span class="hljs-string">&quot;&gt; ⚠️ **DRY RUN** — No changes will be made.&quot;</span></span>
+<span class="line">              <span class="hljs-string">echo</span> <span class="hljs-string">&quot;&quot;</span></span>
+<span class="line">            <span class="hljs-string">fi</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;| Stage | Count |&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;|-------|-------|&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;| Total repos in org | $TOTAL_ALL |&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;| After language filter (\`$LANG_FILTER\`) | $TOTAL_LANG |&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;| After blacklist exclusion | $TOTAL_FINAL |&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;### 📋 Repos to be processed&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;&quot;</span></span>
+<span class="line"></span>
+<span class="line">            <span class="hljs-string">if</span> [[ <span class="hljs-string">&quot;$TOTAL_FINAL&quot;</span> <span class="hljs-string">-eq</span> <span class="hljs-number">0</span> ]]<span class="hljs-string">;</span> <span class="hljs-string">then</span></span>
+<span class="line">              <span class="hljs-string">echo</span> <span class="hljs-string">&quot;&gt; _No repos matched the current filters._&quot;</span></span>
+<span class="line">            <span class="hljs-string">else</span></span>
+<span class="line">              <span class="hljs-string">echo</span> <span class="hljs-string">&quot;| # | Repository | Language |&quot;</span></span>
+<span class="line">              <span class="hljs-string">echo</span> <span class="hljs-string">&quot;|---|-----------|----------|&quot;</span></span>
+<span class="line">              <span class="hljs-string">jq</span> <span class="hljs-string">-r</span> <span class="hljs-string">&#x27;sort_by(.name) | to_entries[] |</span>
+<span class="line">                &quot;| \(.key + 1) | \(.value.name) | \(.value.primaryLanguage.name // &quot;—&quot;) |&quot;</span>
+<span class="line">              &#x27;</span> <span class="hljs-string">filtered.json</span></span>
+<span class="line">            <span class="hljs-string">fi</span></span>
+<span class="line"></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;&quot;</span></span>
+<span class="line"></span>
+<span class="line">            <span class="hljs-comment"># Show blacklisted repos if any</span></span>
+<span class="line">            <span class="hljs-string">if</span> [[ <span class="hljs-string">-n</span> <span class="hljs-string">&quot;$BLACKLIST&quot;</span> ]]<span class="hljs-string">;</span> <span class="hljs-string">then</span></span>
+<span class="line">              <span class="hljs-string">echo</span> <span class="hljs-string">&quot;### 🚫 Blacklisted repos&quot;</span></span>
+<span class="line">              <span class="hljs-string">echo</span> <span class="hljs-string">&quot;&quot;</span></span>
+<span class="line">              <span class="hljs-string">echo</span> <span class="hljs-string">&quot;\`\`\`&quot;</span></span>
+<span class="line">              <span class="hljs-string">echo</span> <span class="hljs-string">&quot;$BLACKLIST&quot;</span></span>
+<span class="line">              <span class="hljs-string">echo</span> <span class="hljs-string">&quot;\`\`\`&quot;</span></span>
+<span class="line">              <span class="hljs-string">echo</span> <span class="hljs-string">&quot;&quot;</span></span>
+<span class="line">            <span class="hljs-string">fi</span></span>
+<span class="line"></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;---&quot;</span></span>
+<span class="line">            <span class="hljs-string">echo</span> <span class="hljs-string">&quot;_Run at $(date -u &#x27;+%Y-%m-%d %H:%M UTC&#x27;) by @$<span class="hljs-template-variable">{{ github.actor }}</span>_&quot;</span></span>
+<span class="line">          } <span class="hljs-string">&gt;&gt;</span> <span class="hljs-string">&quot;$GITHUB_STEP_SUMMARY&quot;</span></span>
+<span class="line"></span></code></pre>
+</div>
+</body>
+</html>
