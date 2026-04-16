@@ -1,0 +1,46 @@
+ÔùÅ Read 02-filter-repos.yml
+  Ôöé .github\workflows\02-filter-repos.yml
+  Ôöö 169 lines read
+
+I'll make four edits: add timeout + outputs to the job, set output values in the blacklist step, add the excluded-repos step, and add the artifact upload step.
+
+ÔùÅ Edit 02-filter-repos.yml +5
+  Ôöö .github\workflows\02-filter-repos.yml
+
+ÔùÅ Edit 02-filter-repos.yml +39
+  Ôöö .github\workflows\02-filter-repos.yml
+
+Now let me verify the final file looks correct:
+
+ÔùÅ Read 02-filter-repos.yml
+  Ôöé .github\workflows\02-filter-repos.yml
+  Ôöö 213 lines read
+
+Now let me commit the changes:
+
+ÔùÅ Check git diff (shell)
+  Ôöé cd C:\code\gbb\labs\AppModLab-ghactions-scale-ghcp-mod && git --no-pager
+  Ôöé diff --stat
+  Ôöö 3 lines...
+
+ÔùÅ Commit workflow changes (shell)
+  Ôöé cd C:\code\gbb\labs\AppModLab-ghactions-scale-ghcp-mod && git add
+  Ôöé .github/workflows/02-filter-repos.yml && git commit -m "Enhance
+  Ôöé 02-filter-repos workflow with timeout, outputs, artifact upload, and
+  Ôöé exclusion stepÔÇª
+  Ôöö 16 lines...
+
+Done. Here's what was added to `02-filter-repos.yml`:
+
+1. **`timeout-minutes: 15`** on the `filter` job (line 45)
+2. **Job outputs** ÔÇö `filtered_count` and `filtered_list` wired from the new `set-outputs` step (lines 47ÔÇô49)
+3. **"Show repos excluded by blacklist"** step ÔÇö lists each excluded repo with its language, or notes when no blacklist is configured (lines 127ÔÇô147)
+4. **"Set job outputs"** step ÔÇö writes `filtered_count` and `filtered_list` to `$GITHUB_OUTPUT` (lines 149ÔÇô156)
+5. **"Upload filtered.json artifact"** step ÔÇö uses `actions/upload-artifact@v4` with 7-day retention (lines 158ÔÇô164)
+
+All existing steps are preserved in their original order.
+
+
+Changes   +44 -0
+Requests  3 Premium (54s)
+Tokens    Ôåæ 181.2k ÔÇó Ôåô 2.0k ÔÇó 153.5k (cached)
