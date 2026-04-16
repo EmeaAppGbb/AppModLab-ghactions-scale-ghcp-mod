@@ -1,0 +1,73 @@
+ÔùÅ Read 01-discover-repos.yml
+  Ôöé .github\workflows\01-discover-repos.yml
+  Ôöö 105 lines read
+
+ÔùÅ List directory .github\workflows
+  Ôöö 6 files found
+
+Let me check a downstream workflow to understand consumption patterns.
+
+ÔùÅ Read 02-filter-repos.yml
+  Ôöé .github\workflows\02-filter-repos.yml
+  Ôöö 169 lines read
+
+ÔùÅ Rubber-duck Validate workflow enhancement plan
+  Ôöé Read 05-batch-assessment.yml
+  Ôöé   Ôöé .github\workflows\05-batch-assessment.yml
+  Ôöé   Ôöö L41:130 (89 lines read)
+  Ôöö Read 05-batch-assessment.yml
+      Ôöé .github\workflows\05-batch-assessment.yml
+      Ôöö L160:210 (51 lines read)
+
+Good feedback. I'll address the truncation warning, artifact `if: always()`, and error handling. Now implementing:
+
+ÔùÅ Edit 01-discover-repos.yml +49 -3
+  Ôöö .github\workflows\01-discover-repos.yml
+
+Now let me update the header comment to reflect the new outputs:
+
+ÔùÅ Edit 01-discover-repos.yml +8 -1
+  Ôöö .github\workflows\01-discover-repos.yml
+
+Let me verify the final file:
+
+ÔùÅ Read 01-discover-repos.yml
+  Ôöé .github\workflows\01-discover-repos.yml
+  Ôöö 158 lines read
+
+File looks correct. Let me validate the YAML syntax:
+
+ÔùÅ Validate YAML syntax (shell)
+  Ôöé python -c "import yaml; yaml.safe_load(open(r'C:\code\gbb\labs\AppModLab-gha
+  Ôöé ctions-scale-ghcp-mod\.github\workflows\01-discover-repos.yml'));
+  Ôöé print('YAML is valid')"
+  Ôöö 2 lines...
+
+ÔùÅ Validate YAML syntax with node (shell)
+  Ôöé node -e "const fs = require('fs'); const yaml = require('js-yaml'); try {
+  Ôöé yaml.load(fs.readFileSync('.github/workflows/01-discover-repos.yml',
+  Ôöé 'utf8')); console.log('YAML is valid'); } catch(e) {
+  Ôöé console.error(e.message); process.exit(1); }"
+  Ôöö 2 lines...
+
+YAML is valid. Here's a summary of the changes made to `01-discover-repos.yml`:
+
+1. **`timeout-minutes: 15`** ÔÇö Added to the `discover` job to prevent runaway execution.
+
+2. **Job outputs** ÔÇö `repo_count` and `repo_list` (compact JSON array of names) exposed via `jobs.discover.outputs` for downstream jobs to consume.
+
+3. **Artifact upload** ÔÇö New step uploads `repos.json` as `discovered-repos` artifact (7-day retention) using `actions/upload-artifact@v4`. Runs with `if: always()` and `if-no-files-found: warn` so it's available even on partial failures.
+
+4. **Better error messages with troubleshooting hints**:
+   - Missing `ORG` ÔåÆ points to Settings ÔåÆ Variables
+   - Missing `GH_PAT` ÔåÆ explains required scopes and where to add the secret
+   - `gh repo list` failure ÔåÆ lists common causes (scopes, misspelled org, API issues)
+   - 0 repos found ÔåÆ warning with hint about permissions/org name
+   - ÔëÑ1000 repos ÔåÆ warning about potential truncation
+
+All existing functionality (concurrency, summary table, language breakdown) is preserved.
+
+
+Changes   +57 -4
+Requests  3 Premium (2m 44s)
+Tokens    Ôåæ 387.7k ÔÇó Ôåô 7.3k ÔÇó 310.8k (cached) ÔÇó 1.3k (reasoning)

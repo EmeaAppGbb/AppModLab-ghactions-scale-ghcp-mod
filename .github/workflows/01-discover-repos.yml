@@ -4,11 +4,18 @@
 # Lists all repositories in the target GitHub organization, shows their
 # primary language, and outputs a summary table in the job summary.
 #
+# Outputs (available to downstream jobs):
+#   repo_count — Number of discovered non-archived repositories
+#   repo_list  — JSON array of repository names (e.g. ["repo-a","repo-b"])
+#
+# Artifacts:
+#   discovered-repos — Full repos.json with name, language, visibility
+#
 # Repository variables:
 #   TARGET_ORG — GitHub organization to scan
 #
 # Secrets:
-#   GH_PAT — Personal Access Token with repo + org:read scopes
+#   GH_PAT — Personal Access Token with repo + read:org scopes
 # ============================================================================
 
 name: "01 · Discover Repos"
@@ -30,6 +37,12 @@ jobs:
   discover:
     name: "List organization repositories"
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    # Expose repo count and list so downstream jobs can consume them
+    outputs:
+      repo_count: ${{ steps.list.outputs.total }}
+      repo_list: ${{ steps.list.outputs.repo_list }}
 
     env:
       # Input takes precedence over the repo variable
@@ -41,9 +54,17 @@ jobs:
       - name: Validate organization name
         run: |
           if [[ -z "$ORG" ]]; then
-            echo "::error::No target org specified. Set the TARGET_ORG repo variable or pass target_org input."
+            echo "::error::No target org specified."
+            echo "::notice::Troubleshooting: Set the TARGET_ORG repository variable under Settings → Secrets and variables → Actions → Variables, or pass the 'target_org' input when triggering this workflow."
             exit 1
           fi
+
+          if [[ -z "$GH_TOKEN" ]]; then
+            echo "::error::GH_PAT secret is not set."
+            echo "::notice::Troubleshooting: Create a Personal Access Token with 'repo' and 'read:org' scopes, then add it as the GH_PAT repository secret under Settings → Secrets and variables → Actions → Secrets."
+            exit 1
+          fi
+
           echo "🏢 Target organization: **$ORG**" >> "$GITHUB_STEP_SUMMARY"
 
       # ── Fetch repo list via GitHub CLI ─────────────────────────────────
@@ -53,14 +74,36 @@ jobs:
           echo "📡 Fetching repositories for org: $ORG ..."
 
           # Fetch repos as JSON — name, primary language, visibility, archived flag
-          gh repo list "$ORG" \
+          if ! gh repo list "$ORG" \
             --json name,primaryLanguage,visibility,isArchived \
             --limit 1000 \
             --no-archived \
-            > repos.json
+            > repos.json; then
+            echo "::error::Failed to list repositories for org '$ORG'."
+            echo "::notice::Troubleshooting — common causes:%0A  • GH_PAT may lack required scopes (needs 'repo' and 'read:org').%0A  • The org name '$ORG' may be misspelled.%0A  • The token owner may not have access to this organization.%0A  • GitHub API may be experiencing issues — check https://www.githubstatus.com"
+            exit 1
+          fi
+
+          # Validate that we got valid JSON back
+          if ! jq empty repos.json 2>/dev/null; then
+            echo "::error::repos.json is not valid JSON. The API response may be malformed."
+            exit 1
+          fi
 
           TOTAL=$(jq length repos.json)
           echo "total=$TOTAL" >> "$GITHUB_OUTPUT"
+
+          # Build compact JSON array of repo names for downstream consumption
+          REPO_LIST=$(jq -c '[.[].name]' repos.json)
+          echo "repo_list=$REPO_LIST" >> "$GITHUB_OUTPUT"
+
+          if [[ "$TOTAL" -eq 0 ]]; then
+            echo "::warning::No non-archived repositories found in org '$ORG'."
+            echo "::notice::Troubleshooting: Verify the org name is correct, that the org contains non-archived repos, and that the GH_PAT token has visibility into the org's repositories."
+          elif [[ "$TOTAL" -ge 1000 ]]; then
+            echo "::warning::Fetched 1000 repos — results may be truncated. The org may contain more repositories than the current limit."
+          fi
+
           echo "✅ Found $TOTAL non-archived repositories."
 
       # ── Build summary table ────────────────────────────────────────────
@@ -103,3 +146,13 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
           echo "📊 Summary written to job summary."
+
+      # ── Upload artifact for downstream workflows ───────────────────────
+      - name: Upload repos.json artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: discovered-repos
+          path: repos.json
+          retention-days: 7
+          if-no-files-found: warn
