@@ -644,6 +644,92 @@ We welcome contributions! Here's how to help:
 
 ---
 
+## 🎓 Solution Walkthrough
+
+This section documents a complete solution run using the **GitHub Copilot CLI** (`gh copilot`) to build and enhance every lab artifact. All changes were made exclusively via CLI prompts — no manual code edits.
+
+> 📂 **Branch:** [`solution-final`](../../tree/solution-final) — contains all step commits and tags.
+> 📁 **CLI Outputs:** [`assets/outputs/`](../../tree/solution-final/assets/outputs) on the solution branch.
+
+### How It Was Built
+
+Each step was executed with:
+
+```bash
+gh copilot -- -p "STEP PROMPT" --allow-all-tools --yolo
+```
+
+Output was captured to `assets/outputs/step-NN-slug.txt`, committed, and tagged.
+
+### Step-by-Step Reference
+
+| Step | Tag | What Copilot Built | Prompt Summary |
+|------|-----|--------------------|----------------|
+| 01 | `step-01-setup-org` | `scripts/01-setup-org.sh` | Create helper script to validate prerequisites and verify a GitHub org exists |
+| 02 | `step-02-fork-repo` | `scripts/02-fork-repo.sh` | Create script to fork the lab repo into a target org with `gh repo fork` |
+| 03 | `step-03-add-sample-repos` | `scripts/03-add-sample-repos.sh` | Create script to fork both sample legacy repos (Java 8 + .NET 4) into the org |
+| 04 | `step-04-configure-variables` | `scripts/04-configure-variables.sh` | Create script to set `TARGET_ORG`, `BLACKLIST_REPOS`, `TARGET_LANGUAGES`, and `GH_PAT` |
+| 05 | `step-05-discovery-workflow` | Enhanced `01-discover-repos.yml` | Add artifact upload, job outputs, troubleshooting hints, and `timeout-minutes` |
+| 06 | `step-06-filter-workflow` | Enhanced `02-filter-repos.yml` | Add artifact upload, job outputs, blacklist exclusion report, and `timeout-minutes` |
+| 07 | `step-07-assessment-workflow` | Enhanced `03-run-assessment.yml` | Add retry logic (3 attempts), output validation, artifact upload, and file-listing summary |
+| 08 | `step-08-pr-workflow` | Enhanced `04-create-pr.yml` | Add assessment excerpt in PR body, optional reviewers, workflow-run comment, error handling |
+| 09 | `step-09-batch-workflow` | Enhanced `05-batch-assessment.yml` | Add per-job timeouts, concurrency check, ETA, artifact-based status tracking, summary issue |
+
+### Example CLI Commands
+
+```bash
+# Step 1 — Create org setup script
+gh copilot -- -p "Create scripts/01-setup-org.sh that checks gh CLI is installed, \
+  prints instructions for creating a GitHub org, accepts ORG_NAME as argument, \
+  and verifies the org exists via gh api." --allow-all-tools --yolo
+
+# Step 5 — Enhance discovery workflow
+gh copilot -- -p "Enhance .github/workflows/01-discover-repos.yml: add artifact \
+  upload for repos.json, job outputs for repo count and list, better error messages, \
+  and timeout-minutes." --allow-all-tools --yolo
+
+# Step 9 — Enhance batch workflow
+gh copilot -- -p "Enhance .github/workflows/05-batch-assessment.yml: add per-job \
+  timeouts, a summary GitHub issue, concurrency warning, ETA calculation, and \
+  improved final summary with PR links." --allow-all-tools --yolo
+```
+
+### Reproducing the Solution
+
+```bash
+# Clone and create the solution branch
+git clone https://github.com/EmeaAppGbb/AppModLab-ghactions-scale-ghcp-mod.git
+cd AppModLab-ghactions-scale-ghcp-mod
+git checkout main && git pull origin main
+git checkout -b solution-final
+
+# Run each step (see table above for prompts)
+gh copilot -- -p "PROMPT FOR STEP N" --allow-all-tools --yolo
+git add -A && git commit -m "Step NN: Title"
+git tag step-NN-slug
+
+# Push everything
+git push origin solution-final --tags
+```
+
+### Output Files
+
+All CLI session outputs are saved in `assets/outputs/` on the `solution-final` branch:
+
+| File | Step |
+|------|------|
+| `step-01-setup-org.txt` | Org setup script creation |
+| `step-02-fork-repo.txt` | Fork helper script creation |
+| `step-03-add-sample-repos.txt` | Sample repos script creation |
+| `step-04-configure-variables.txt` | Variables configuration script |
+| `step-05-discovery-workflow.txt` | Discovery workflow enhancements |
+| `step-06-filter-workflow.txt` | Filter workflow enhancements |
+| `step-07-assessment-workflow.txt` | Assessment workflow enhancements |
+| `step-08-pr-workflow.txt` | PR workflow enhancements |
+| `step-09-batch-workflow.txt` | Batch workflow enhancements |
+
+---
+
 <p align="center">
   <sub>Built with ❤️ for the app modernization community</sub>
 </p>
