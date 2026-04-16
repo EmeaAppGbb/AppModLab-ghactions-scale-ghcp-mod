@@ -52,10 +52,12 @@ jobs:
   discover-and-filter:
     name: "Discover & filter repos"
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     outputs:
       matrix: ${{ steps.matrix.outputs.repos }}
       count: ${{ steps.matrix.outputs.count }}
+      estimated_minutes: ${{ steps.eta.outputs.estimated_minutes }}
 
     env:
       ORG: ${{ vars.TARGET_ORG }}
@@ -65,6 +67,28 @@ jobs:
       GH_TOKEN: ${{ secrets.GH_PAT }}
 
     steps:
+      - name: Check for concurrent batch runs
+        run: |
+          RUNNING=$(gh run list \
+            --repo "${{ github.repository }}" \
+            --workflow "05-batch-assessment.yml" \
+            --status in_progress \
+            --json databaseId \
+            --jq "[.[] | select(.databaseId != ${{ github.run_id }})] | length")
+
+          QUEUED=$(gh run list \
+            --repo "${{ github.repository }}" \
+            --workflow "05-batch-assessment.yml" \
+            --status queued \
+            --json databaseId \
+            --jq "[.[] | select(.databaseId != ${{ github.run_id }})] | length")
+
+          if [[ "$RUNNING" -gt 0 || "$QUEUED" -gt 0 ]]; then
+            echo "::warning::⚠️ Another batch assessment is already running or queued (${RUNNING} running, ${QUEUED} queued). This run will be serialized by the concurrency group."
+          else
+            echo "✅ No other batch runs detected."
+          fi
+
       - name: Validate inputs
         run: |
           if [[ -z "$ORG" ]]; then
@@ -160,6 +184,29 @@ jobs:
             echo "_Run at $(date -u '+%Y-%m-%d %H:%M UTC') by @${{ github.actor }}_"
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Estimate time remaining
+        id: eta
+        run: |
+          COUNT=${{ steps.matrix.outputs.count }}
+          MAX_PARALLEL=3
+          # ~8 min per repo for assessment, ~2 min per repo for PR creation
+          ASSESS_MIN=8
+          PR_MIN=2
+
+          if [[ "${{ inputs.dry_run }}" == "true" || "$COUNT" -eq 0 ]]; then
+            echo "estimated_minutes=0" >> "$GITHUB_OUTPUT"
+            echo "⏱️ Dry run or zero repos — no assessment time needed."
+          else
+            BATCHES=$(( (COUNT + MAX_PARALLEL - 1) / MAX_PARALLEL ))
+            ASSESS_TIME=$(( BATCHES * ASSESS_MIN ))
+            PR_TIME=$(( BATCHES * PR_MIN ))
+            TOTAL=$(( ASSESS_TIME + PR_TIME ))
+            echo "estimated_minutes=$TOTAL" >> "$GITHUB_OUTPUT"
+            echo "⏱️ Estimated time: ~${TOTAL} min (${COUNT} repos in ${BATCHES} batches of ${MAX_PARALLEL})"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "> ⏱️ **Estimated time remaining:** ~${TOTAL} minutes (${BATCHES} batch(es) × ${MAX_PARALLEL} parallel)" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
   # ════════════════════════════════════════════════════════════════════════
   # Phase 2 — Run Assessments (matrix job, skipped on dry run)
   # ════════════════════════════════════════════════════════════════════════
@@ -168,6 +215,7 @@ jobs:
     needs: discover-and-filter
     if: inputs.dry_run == false && needs.discover-and-filter.outputs.count > 0
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     strategy:
       fail-fast: false
@@ -239,6 +287,25 @@ jobs:
           git push origin ghcp-mod --force-with-lease
           echo "✅ Pushed ghcp-mod branch."
 
+      - name: Record assessment status
+        if: always()
+        run: |
+          mkdir -p /tmp/batch-status
+          STATUS="${{ job.status }}"
+          jq -n \
+            --arg repo "${{ matrix.repo }}" \
+            --arg assess_status "$STATUS" \
+            '{repo: $repo, assess_status: $assess_status}' \
+            > "/tmp/batch-status/assess-${{ matrix.repo }}.json"
+
+      - name: Upload assessment status
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: assess-status-${{ matrix.repo }}
+          path: /tmp/batch-status/assess-${{ matrix.repo }}.json
+          retention-days: 1
+
   # ════════════════════════════════════════════════════════════════════════
   # Phase 3 — Create PRs (runs after all assessments complete)
   # ════════════════════════════════════════════════════════════════════════
@@ -247,6 +314,7 @@ jobs:
     needs: [discover-and-filter, assess]
     if: inputs.dry_run == false && needs.discover-and-filter.outputs.count > 0
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     strategy:
       fail-fast: false
@@ -342,6 +410,38 @@ jobs:
             echo "- **PR:** [$URL]($URL)"
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Record PR status
+        if: always()
+        run: |
+          mkdir -p /tmp/batch-status
+
+          if [[ "${{ steps.check.outputs.exists }}" == "true" ]]; then
+            PR_URL="${{ steps.check.outputs.url }}"
+            PR_STATUS="already_existed"
+          elif [[ -n "${{ steps.create.outputs.url }}" ]]; then
+            PR_URL="${{ steps.create.outputs.url }}"
+            PR_STATUS="created"
+          else
+            PR_URL=""
+            PR_STATUS="failed"
+          fi
+
+          jq -n \
+            --arg repo "${{ matrix.repo }}" \
+            --arg pr_status "$PR_STATUS" \
+            --arg pr_url "$PR_URL" \
+            --arg job_status "${{ job.status }}" \
+            '{repo: $repo, pr_status: $pr_status, pr_url: $pr_url, job_status: $job_status}' \
+            > "/tmp/batch-status/pr-${{ matrix.repo }}.json"
+
+      - name: Upload PR status
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-status-${{ matrix.repo }}
+          path: /tmp/batch-status/pr-${{ matrix.repo }}.json
+          retention-days: 1
+
   # ════════════════════════════════════════════════════════════════════════
   # Phase 4 — Final Summary
   # ════════════════════════════════════════════════════════════════════════
@@ -350,8 +450,114 @@ jobs:
     needs: [discover-and-filter, assess, create-prs]
     if: always()
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    env:
+      GH_TOKEN: ${{ secrets.GH_PAT }}
 
     steps:
+      - name: Download assessment status artifacts
+        if: needs.assess.result != 'skipped'
+        uses: actions/download-artifact@v4
+        with:
+          pattern: assess-status-*
+          path: /tmp/assess-status
+          merge-multiple: true
+        continue-on-error: true
+
+      - name: Download PR status artifacts
+        if: needs.create-prs.result != 'skipped'
+        uses: actions/download-artifact@v4
+        with:
+          pattern: pr-status-*
+          path: /tmp/pr-status
+          merge-multiple: true
+        continue-on-error: true
+
+      - name: Build results table
+        id: results
+        run: |
+          REPO_LIST='${{ needs.discover-and-filter.outputs.matrix }}'
+          COUNT=${{ needs.discover-and-filter.outputs.count || 0 }}
+
+          # Start building the markdown table
+          TABLE="| # | Repository | Assessment | PR Status | PR Link |"
+          TABLE="${TABLE}\n|---|-----------|-----------|-----------|---------|"
+
+          PR_LINKS=""
+          IDX=0
+
+          if [[ "$COUNT" -gt 0 ]]; then
+            for REPO in $(echo "$REPO_LIST" | jq -r '.[]'); do
+              IDX=$((IDX + 1))
+
+              # Read assessment status
+              ASSESS_FILE="/tmp/assess-status/assess-${REPO}.json"
+              if [[ -f "$ASSESS_FILE" ]]; then
+                ASSESS_STATUS=$(jq -r '.assess_status' "$ASSESS_FILE")
+              elif [[ "${{ inputs.dry_run }}" == "true" ]]; then
+                ASSESS_STATUS="skipped (dry run)"
+              else
+                ASSESS_STATUS="no data"
+              fi
+
+              # Read PR status
+              PR_FILE="/tmp/pr-status/pr-${REPO}.json"
+              if [[ -f "$PR_FILE" ]]; then
+                PR_STATUS=$(jq -r '.pr_status' "$PR_FILE")
+                PR_URL=$(jq -r '.pr_url' "$PR_FILE")
+              elif [[ "${{ inputs.dry_run }}" == "true" ]]; then
+                PR_STATUS="skipped (dry run)"
+                PR_URL=""
+              else
+                PR_STATUS="no data"
+                PR_URL=""
+              fi
+
+              # Format status with emoji
+              case "$ASSESS_STATUS" in
+                success)  ASSESS_DISPLAY="✅ success" ;;
+                failure)  ASSESS_DISPLAY="❌ failure" ;;
+                *)        ASSESS_DISPLAY="⚪ ${ASSESS_STATUS}" ;;
+              esac
+
+              case "$PR_STATUS" in
+                created)         PR_DISPLAY="✅ created" ;;
+                already_existed) PR_DISPLAY="ℹ️ existed" ;;
+                failed)          PR_DISPLAY="❌ failed" ;;
+                *)               PR_DISPLAY="⚪ ${PR_STATUS}" ;;
+              esac
+
+              if [[ -n "$PR_URL" && "$PR_URL" != "" ]]; then
+                PR_LINK="[View PR](${PR_URL})"
+                PR_LINKS="${PR_LINKS}\n- **${REPO}**: ${PR_URL}"
+              else
+                PR_LINK="—"
+              fi
+
+              TABLE="${TABLE}\n| ${IDX} | \`${REPO}\` | ${ASSESS_DISPLAY} | ${PR_DISPLAY} | ${PR_LINK} |"
+            done
+          fi
+
+          # Write to outputs (use file-based approach for multiline)
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+
+          {
+            echo "table<<EOFTABLE"
+            echo -e "$TABLE"
+            echo "EOFTABLE"
+          } >> "$GITHUB_OUTPUT"
+
+          {
+            echo "pr_links<<EOFLINKS"
+            if [[ -n "$PR_LINKS" ]]; then
+              echo -e "$PR_LINKS"
+            else
+              echo "_No PRs created in this run._"
+            fi
+            echo "EOFLINKS"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Final summary
         run: |
           {
@@ -361,11 +567,61 @@ jobs:
             echo "|--------|-------|"
             echo "| Dry run | \`${{ inputs.dry_run }}\` |"
             echo "| Repos targeted | ${{ needs.discover-and-filter.outputs.count }} |"
+            echo "| Estimated time | ~${{ needs.discover-and-filter.outputs.estimated_minutes }} min |"
             echo "| Discovery | \`${{ needs.discover-and-filter.result }}\` |"
             if [[ "${{ inputs.dry_run }}" == "false" ]]; then
               echo "| Assessment | \`${{ needs.assess.result }}\` |"
               echo "| PR creation | \`${{ needs.create-prs.result }}\` |"
             fi
             echo ""
+            echo "### 📊 Per-Repository Results"
+            echo ""
+            echo '${{ steps.results.outputs.table }}'
+            echo ""
+            echo "### 🔗 Created PRs"
+            echo ""
+            echo '${{ steps.results.outputs.pr_links }}'
+            echo ""
             echo "_Run at $(date -u '+%Y-%m-%d %H:%M UTC') by @${{ github.actor }}_"
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Create summary issue
+        if: inputs.dry_run == false
+        run: |
+          ISSUE_TITLE="📋 Batch Assessment Run — $(date -u '+%Y-%m-%d %H:%M UTC')"
+
+          ISSUE_BODY="## 🏁 Batch Assessment Results
+
+          **Workflow run:** [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          **Triggered by:** @${{ github.actor }}
+          **Language filter:** \`${{ inputs.language_filter }}\`
+          **Repos targeted:** ${{ needs.discover-and-filter.outputs.count }}
+
+          ### 📊 Results
+
+          ${{ steps.results.outputs.table }}
+
+          ### 🔗 Pull Requests
+
+          ${{ steps.results.outputs.pr_links }}
+
+          ### Job Status
+
+          | Phase | Status |
+          |-------|--------|
+          | Discovery | \`${{ needs.discover-and-filter.result }}\` |
+          | Assessment | \`${{ needs.assess.result }}\` |
+          | PR Creation | \`${{ needs.create-prs.result }}\` |
+
+          ---
+          > 🤖 _Automated by [Batch Assessment Pipeline](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})_"
+
+          gh issue create \
+            --repo "${{ github.repository }}" \
+            --title "$ISSUE_TITLE" \
+            --body "$ISSUE_BODY" \
+            --label "batch-assessment"  2>/dev/null || \
+          gh issue create \
+            --repo "${{ github.repository }}" \
+            --title "$ISSUE_TITLE" \
+            --body "$ISSUE_BODY"
