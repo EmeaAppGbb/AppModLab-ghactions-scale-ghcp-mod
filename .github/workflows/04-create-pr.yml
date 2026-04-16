@@ -2,10 +2,12 @@
 # 04-create-pr.yml — PR Creator
 # ============================================================================
 # Creates a pull request from the ghcp-mod branch to main, containing the
-# modernization assessment results. Adds labels and a rich PR body.
+# modernization assessment results. Adds labels, a rich PR body with an
+# assessment excerpt, optional reviewers, and a workflow-run comment.
 #
 # Repository variables:
 #   TARGET_ORG — GitHub organization that owns the target repo
+#   REVIEWERS  — (optional) Comma-separated GitHub usernames to request review
 #
 # Secrets:
 #   GH_PAT — Personal Access Token with repo scope
@@ -30,6 +32,7 @@ jobs:
   create-pr:
     name: "Create PR for ${{ inputs.target_repo }}"
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     env:
       ORG: ${{ vars.TARGET_ORG }}
@@ -42,6 +45,9 @@ jobs:
         run: |
           if [[ -z "$ORG" ]]; then
             echo "::error::TARGET_ORG repo variable is not set."
+            echo ""
+            echo "💡 Troubleshooting: Set the TARGET_ORG repository variable under"
+            echo "   Settings → Secrets and variables → Actions → Variables."
             exit 1
           fi
           if [[ -z "$REPO_NAME" ]]; then
@@ -56,13 +62,113 @@ jobs:
         run: |
           echo "🔎 Checking for ghcp-mod branch on $ORG/$REPO_NAME ..."
 
-          BRANCH_EXISTS=$(gh api "repos/$ORG/$REPO_NAME/branches/ghcp-mod" --jq '.name' 2>/dev/null || echo "")
-          if [[ -z "$BRANCH_EXISTS" ]]; then
-            echo "::error::Branch 'ghcp-mod' does not exist on $ORG/$REPO_NAME. Run the assessment workflow first."
+          HTTP_CODE=$(gh api "repos/$ORG/$REPO_NAME/branches/ghcp-mod" \
+            --jq '.name' \
+            -i 2>&1 | head -1 | awk '{print $2}') || true
+
+          BRANCH_NAME=$(gh api "repos/$ORG/$REPO_NAME/branches/ghcp-mod" \
+            --jq '.name' 2>/dev/null) || true
+
+          if [[ -n "$BRANCH_NAME" ]]; then
+            echo "✅ Branch ghcp-mod found."
+          elif [[ "$HTTP_CODE" == "401" || "$HTTP_CODE" == "403" ]]; then
+            echo "::error::Authentication/authorization failed (HTTP $HTTP_CODE)."
+            echo ""
+            echo "💡 Troubleshooting:"
+            echo "   • Verify the GH_PAT secret has 'repo' scope."
+            echo "   • Ensure the token has access to $ORG/$REPO_NAME."
+            exit 1
+          elif [[ "$HTTP_CODE" == "404" ]]; then
+            # Could be repo not found or branch not found — check the repo first
+            REPO_CHECK=$(gh api "repos/$ORG/$REPO_NAME" --jq '.full_name' 2>/dev/null) || true
+            if [[ -z "$REPO_CHECK" ]]; then
+              echo "::error::Repository $ORG/$REPO_NAME not found (HTTP 404)."
+              echo ""
+              echo "💡 Troubleshooting:"
+              echo "   • Check the TARGET_ORG variable and target_repo input for typos."
+              echo "   • Ensure the GH_PAT token has access to the repository."
+              exit 1
+            else
+              echo "::error::Branch 'ghcp-mod' does not exist on $ORG/$REPO_NAME."
+              echo ""
+              echo "💡 Troubleshooting:"
+              echo "   • Run the '03 · Run Assessment' workflow first to create the branch."
+              exit 1
+            fi
+          else
+            echo "::error::Unexpected error checking branch (HTTP $HTTP_CODE)."
+            echo ""
+            echo "💡 Troubleshooting:"
+            echo "   • Check GitHub status at https://www.githubstatus.com"
+            echo "   • Retry the workflow after a few minutes."
             exit 1
           fi
 
-          echo "✅ Branch ghcp-mod found."
+      # ── Fetch assessment summary excerpt ───────────────────────────────
+      - name: Fetch assessment summary
+        id: summary
+        run: |
+          echo "📄 Fetching assessment summary from ghcp-mod branch ..."
+
+          EXCERPT=""
+
+          # Priority list of summary file names to look for
+          SUMMARY_FILES=("summary.md" "SUMMARY.md" "report.md" "REPORT.md" "index.md" "README.md")
+
+          # List files in the assessment directory
+          FILE_LIST=$(gh api "repos/$ORG/$REPO_NAME/contents/ghcp-mod-assessment?ref=ghcp-mod" \
+            --jq '.[].name' 2>/dev/null) || true
+
+          if [[ -n "$FILE_LIST" ]]; then
+            CHOSEN_FILE=""
+
+            # Try priority files first
+            for CANDIDATE in "${SUMMARY_FILES[@]}"; do
+              if echo "$FILE_LIST" | grep -qx "$CANDIDATE"; then
+                CHOSEN_FILE="$CANDIDATE"
+                break
+              fi
+            done
+
+            # Fall back to first .md file
+            if [[ -z "$CHOSEN_FILE" ]]; then
+              CHOSEN_FILE=$(echo "$FILE_LIST" | grep -m1 '\.md$') || true
+            fi
+
+            if [[ -n "$CHOSEN_FILE" ]]; then
+              echo "📑 Reading $CHOSEN_FILE ..."
+              RAW_CONTENT=$(gh api "repos/$ORG/$REPO_NAME/contents/ghcp-mod-assessment/$CHOSEN_FILE?ref=ghcp-mod" \
+                --jq '.content' 2>/dev/null) || true
+
+              if [[ -n "$RAW_CONTENT" ]]; then
+                DECODED=$(echo "$RAW_CONTENT" | base64 -d 2>/dev/null | head -c 1500) || true
+                # Take first ~30 lines as a useful excerpt
+                EXCERPT=$(echo "$DECODED" | head -30)
+                echo "✅ Extracted excerpt from $CHOSEN_FILE"
+              fi
+            fi
+
+            # Build file listing regardless
+            FILE_LISTING=$(echo "$FILE_LIST" | sed 's/^/  - `/' | sed 's/$/`/')
+          fi
+
+          if [[ -z "$EXCERPT" ]]; then
+            echo "ℹ️  No summary excerpt available (assessment files may not contain markdown)."
+            EXCERPT="_No summary excerpt available — see the assessment files for details._"
+          fi
+
+          # Use multiline output syntax for safe handling
+          {
+            echo "excerpt<<EXCERPT_EOF"
+            echo "$EXCERPT"
+            echo "EXCERPT_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+          {
+            echo "file_list<<FILELIST_EOF"
+            echo "${FILE_LISTING:-_No files found._}"
+            echo "FILELIST_EOF"
+          } >> "$GITHUB_OUTPUT"
 
       # ── Check for existing PR ──────────────────────────────────────────
       - name: Check for existing PR
@@ -79,6 +185,7 @@ jobs:
             echo "ℹ️  PR already exists: $EXISTING_PR"
             echo "exists=true" >> "$GITHUB_OUTPUT"
             echo "url=$EXISTING_PR" >> "$GITHUB_OUTPUT"
+            echo "number=$(basename "$EXISTING_PR")" >> "$GITHUB_OUTPUT"
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
@@ -87,26 +194,42 @@ jobs:
       - name: Create pull request
         id: create
         if: steps.check-pr.outputs.exists == 'false'
+        env:
+          SUMMARY_EXCERPT: ${{ steps.summary.outputs.excerpt }}
+          SUMMARY_FILES: ${{ steps.summary.outputs.file_list }}
         run: |
           PR_TITLE="🔍 GHCP Modernization Assessment — $REPO_NAME"
 
-          PR_BODY=$(cat <<'ENDOFBODY'
+          # Build PR body with assessment excerpt
+          PR_BODY=$(cat <<ENDOFBODY
           ## 🔍 GHCP Modernization Assessment
 
           This pull request contains an automated modernization assessment generated by
-          the **GitHub Copilot Modernization CLI** (`modernize assess`).
+          the **GitHub Copilot Modernization CLI** (\`modernize assess\`).
 
           ### 📂 What's included
 
-          - **Assessment report** in `ghcp-mod-assessment/` — a detailed analysis of the
+          - **Assessment report** in \`ghcp-mod-assessment/\` — a detailed analysis of the
             codebase covering architecture, dependencies, patterns, and modernization
             opportunities.
 
+          **Assessment files:**
+          ${SUMMARY_FILES}
+
+          ### 📝 Assessment summary excerpt
+
+          <details>
+          <summary>Click to expand assessment excerpt</summary>
+
+          ${SUMMARY_EXCERPT}
+
+          </details>
+
           ### 📋 Next steps for the repo owner
 
-          1. **Review the assessment** — Open the files in `ghcp-mod-assessment/` and
+          1. **Review the assessment** — Open the files in \`ghcp-mod-assessment/\` and
              review the findings, recommendations, and identified patterns.
-          2. **Create a modernization plan** — Use `modernize plan create` to generate a
+          2. **Create a modernization plan** — Use \`modernize plan create\` to generate a
              step-by-step modernization plan based on the assessment.
           3. **Prioritize changes** — Identify quick wins vs. larger refactoring efforts.
           4. **Merge or close** — If the assessment is useful, merge this PR to keep the
@@ -115,7 +238,7 @@ jobs:
           ### ⚙️ About this PR
 
           - **Generated by:** GitHub Actions automation
-          - **Branch:** `ghcp-mod`
+          - **Branch:** \`ghcp-mod\`
           - **Tool:** [GitHub Copilot Modernization CLI](https://github.com/github/gh-modernize)
 
           ---
@@ -130,14 +253,42 @@ jobs:
             --title "$PR_TITLE" \
             --body "$PR_BODY" \
             --base main \
-            --head ghcp-mod)
+            --head ghcp-mod 2>&1) || {
+            EXIT_CODE=$?
+            echo "::error::Failed to create PR (exit code $EXIT_CODE)."
+            echo ""
+            echo "💡 Troubleshooting:"
+            echo "   • If 'no commits between main and ghcp-mod': the branch may already"
+            echo "     be merged or has no changes. Re-run the assessment workflow."
+            echo "   • If 'pull request already exists': check for open PRs on $ORG/$REPO_NAME."
+            echo "   • If 'permission denied': verify GH_PAT has 'repo' scope and write access."
+            echo ""
+            echo "Output: $PR_URL"
+            exit $EXIT_CODE
+          }
 
+          PR_NUMBER=$(basename "$PR_URL")
           echo "url=$PR_URL" >> "$GITHUB_OUTPUT"
+          echo "number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
           echo "✅ PR created: $PR_URL"
+
+      # ── Resolve PR number for downstream steps ─────────────────────────
+      - name: Resolve PR details
+        id: pr
+        run: |
+          if [[ "${{ steps.check-pr.outputs.exists }}" == "true" ]]; then
+            echo "url=${{ steps.check-pr.outputs.url }}" >> "$GITHUB_OUTPUT"
+            echo "number=${{ steps.check-pr.outputs.number }}" >> "$GITHUB_OUTPUT"
+            echo "created=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "url=${{ steps.create.outputs.url }}" >> "$GITHUB_OUTPUT"
+            echo "number=${{ steps.create.outputs.number }}" >> "$GITHUB_OUTPUT"
+            echo "created=true" >> "$GITHUB_OUTPUT"
+          fi
 
       # ── Add labels ─────────────────────────────────────────────────────
       - name: Add labels to PR
-        if: steps.check-pr.outputs.exists == 'false'
+        if: steps.pr.outputs.created == 'true'
         run: |
           # Ensure labels exist (create if missing)
           for LABEL in "ghcp-mod" "assessment"; do
@@ -149,24 +300,97 @@ jobs:
           done
 
           # Add labels to the PR
-          PR_URL="${{ steps.create.outputs.url }}"
-          PR_NUMBER=$(basename "$PR_URL")
-
-          gh pr edit "$PR_NUMBER" \
+          gh pr edit "${{ steps.pr.outputs.number }}" \
             --repo "$ORG/$REPO_NAME" \
             --add-label "ghcp-mod,assessment"
 
           echo "🏷️ Labels added: ghcp-mod, assessment"
 
+      # ── Assign reviewers (optional) ────────────────────────────────────
+      - name: Assign reviewers
+        if: vars.REVIEWERS != ''
+        env:
+          REVIEWERS: ${{ vars.REVIEWERS }}
+        run: |
+          echo "👥 Assigning reviewers ..."
+          PR_NUMBER="${{ steps.pr.outputs.number }}"
+
+          # Parse comma-separated list, trim whitespace
+          IFS=',' read -ra REVIEWER_LIST <<< "$REVIEWERS"
+
+          ADDED=()
+          FAILED=()
+          for RAW_REVIEWER in "${REVIEWER_LIST[@]}"; do
+            REVIEWER=$(echo "$RAW_REVIEWER" | xargs)  # trim whitespace
+            if [[ -z "$REVIEWER" ]]; then
+              continue
+            fi
+
+            echo "  → Requesting review from: $REVIEWER"
+            if gh pr edit "$PR_NUMBER" \
+              --repo "$ORG/$REPO_NAME" \
+              --add-reviewer "$REVIEWER" 2>/dev/null; then
+              ADDED+=("$REVIEWER")
+            else
+              echo "::warning::Could not add reviewer '$REVIEWER' — they may not have access to $ORG/$REPO_NAME."
+              FAILED+=("$REVIEWER")
+            fi
+          done
+
+          echo ""
+          if [[ ${#ADDED[@]} -gt 0 ]]; then
+            echo "✅ Reviewers added: ${ADDED[*]}"
+          fi
+          if [[ ${#FAILED[@]} -gt 0 ]]; then
+            echo "⚠️  Could not add: ${FAILED[*]}"
+            echo ""
+            echo "💡 Troubleshooting:"
+            echo "   • Ensure reviewers are collaborators on $ORG/$REPO_NAME."
+            echo "   • For team reviews, use the format 'org/team-name'."
+          fi
+
+      # ── Post workflow run comment ──────────────────────────────────────
+      - name: Comment with workflow run link
+        run: |
+          PR_NUMBER="${{ steps.pr.outputs.number }}"
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          COMMENT_BODY=$(cat <<EOF
+          ### 🔗 Workflow Run
+
+          This PR was processed by the **04 · Create PR** workflow.
+
+          | Detail | Value |
+          |--------|-------|
+          | Workflow run | [View run]($RUN_URL) |
+          | Automation repo | \`${{ github.repository }}\` |
+          | Triggered by | @${{ github.actor }} |
+          | Timestamp | $(date -u '+%Y-%m-%d %H:%M UTC') |
+
+          > _This is an automated comment. The workflow run link points to the automation
+          > repository, not this repository._
+          EOF
+          )
+
+          gh pr comment "$PR_NUMBER" \
+            --repo "$ORG/$REPO_NAME" \
+            --body "$COMMENT_BODY"
+
+          echo "💬 Comment posted on PR #$PR_NUMBER"
+
       # ── Job summary ────────────────────────────────────────────────────
       - name: Write job summary
+        if: always()
         run: |
-          if [[ "${{ steps.check-pr.outputs.exists }}" == "true" ]]; then
-            PR_URL="${{ steps.check-pr.outputs.url }}"
+          PR_URL="${{ steps.pr.outputs.url }}"
+          PR_NUMBER="${{ steps.pr.outputs.number }}"
+
+          if [[ "${{ steps.pr.outputs.created }}" == "true" ]]; then
+            STATUS="✅ PR created"
+          elif [[ -n "$PR_URL" ]]; then
             STATUS="ℹ️ PR already existed"
           else
-            PR_URL="${{ steps.create.outputs.url }}"
-            STATUS="✅ PR created"
+            STATUS="❌ PR creation failed"
           fi
 
           {
@@ -176,8 +400,36 @@ jobs:
             echo "|--------|-------|"
             echo "| Status | $STATUS |"
             echo "| Repository | [\`$ORG/$REPO_NAME\`](https://github.com/$ORG/$REPO_NAME) |"
-            echo "| Pull Request | [$PR_URL]($PR_URL) |"
+            if [[ -n "$PR_URL" ]]; then
+              echo "| Pull Request | [#$PR_NUMBER]($PR_URL) |"
+            fi
             echo "| Labels | \`ghcp-mod\`, \`assessment\` |"
+            if [[ -n "${{ vars.REVIEWERS }}" ]]; then
+              echo "| Reviewers | \`${{ vars.REVIEWERS }}\` |"
+            fi
+            echo ""
+            echo "_Run at $(date -u '+%Y-%m-%d %H:%M UTC') by @${{ github.actor }}_"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # ── Failure troubleshooting summary ────────────────────────────────
+      - name: Troubleshooting summary on failure
+        if: failure()
+        run: |
+          {
+            echo "## ❌ Workflow Failed — \`$ORG/$REPO_NAME\`"
+            echo ""
+            echo "### 💡 Common issues and fixes"
+            echo ""
+            echo "| Problem | Solution |"
+            echo "|---------|----------|"
+            echo "| **TARGET_ORG not set** | Add \`TARGET_ORG\` under repo Settings → Secrets and variables → Actions → Variables |"
+            echo "| **GH_PAT auth failure** | Verify the \`GH_PAT\` secret has \`repo\` scope and access to the target org |"
+            echo "| **Branch not found** | Run the **03 · Run Assessment** workflow first to create the \`ghcp-mod\` branch |"
+            echo "| **No commits between branches** | The \`ghcp-mod\` branch may already be merged — re-run the assessment |"
+            echo "| **Reviewer not found** | Ensure reviewer usernames in \`REVIEWERS\` variable are valid collaborators |"
+            echo "| **Rate limiting** | Wait a few minutes and retry — GitHub API rate limits may apply |"
+            echo ""
+            echo "📖 For more details, check the failed step logs above."
             echo ""
             echo "_Run at $(date -u '+%Y-%m-%d %H:%M UTC') by @${{ github.actor }}_"
           } >> "$GITHUB_STEP_SUMMARY"
