@@ -37,6 +37,7 @@ jobs:
   assess:
     name: "Assess ${{ inputs.target_repo }}"
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     env:
       ORG: ${{ vars.TARGET_ORG }}
@@ -146,18 +147,83 @@ jobs:
           fi
 
           echo "▶️ Command: $CMD"
-          eval "$CMD"
 
-          echo "✅ Assessment complete."
+          # Retry logic — up to 3 attempts for transient failures
+          MAX_ATTEMPTS=3
+          ATTEMPT=0
+          SUCCESS=false
 
-          # Verify output was created
-          if [[ -d ./ghcp-mod-assessment ]]; then
-            echo "📂 Assessment output:"
-            ls -la ./ghcp-mod-assessment/
-          else
+          while [[ $ATTEMPT -lt $MAX_ATTEMPTS ]]; do
+            ATTEMPT=$((ATTEMPT + 1))
+            echo "🔄 Attempt $ATTEMPT of $MAX_ATTEMPTS ..."
+
+            if eval "$CMD"; then
+              SUCCESS=true
+              break
+            else
+              echo "::warning::Attempt $ATTEMPT failed."
+              if [[ $ATTEMPT -lt $MAX_ATTEMPTS ]]; then
+                SLEEP=$((ATTEMPT * 10))
+                echo "⏳ Waiting ${SLEEP}s before retry ..."
+                sleep "$SLEEP"
+              fi
+            fi
+          done
+
+          if [[ "$SUCCESS" != "true" ]]; then
+            echo "::error::Assessment failed after $MAX_ATTEMPTS attempts."
+            exit 1
+          fi
+
+          echo "✅ Assessment complete (attempt $ATTEMPT)."
+
+      # ── Validate assessment output ──────────────────────────────────
+      - name: Validate assessment output
+        if: inputs.dry_run == false
+        working-directory: target-repo
+        run: |
+          echo "🔎 Validating assessment output ..."
+
+          if [[ ! -d ./ghcp-mod-assessment ]]; then
             echo "::error::Assessment output directory not found!"
             exit 1
           fi
+
+          FILE_COUNT=$(find ./ghcp-mod-assessment -type f | wc -l)
+          echo "📂 Found $FILE_COUNT file(s) in assessment output."
+
+          if [[ "$FILE_COUNT" -eq 0 ]]; then
+            echo "::error::Assessment output directory is empty — no files were generated."
+            exit 1
+          fi
+
+          echo "✅ Validation passed."
+
+      # ── Assessment file listing summary ─────────────────────────────
+      - name: Write assessment file listing summary
+        if: inputs.dry_run == false
+        working-directory: target-repo
+        run: |
+          {
+            echo "## 📂 Assessment File Listing — \`$ORG/$REPO_NAME\`"
+            echo ""
+            echo "| File | Size |"
+            echo "|------|------|"
+            find ./ghcp-mod-assessment -type f -printf '| `%P` | %s bytes |\n' | sort
+            echo ""
+            TOTAL=$(find ./ghcp-mod-assessment -type f | wc -l)
+            echo "**Total files:** $TOTAL"
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # ── Upload assessment artifact ──────────────────────────────────
+      - name: Upload assessment artifact
+        if: inputs.dry_run == false
+        uses: actions/upload-artifact@v4
+        with:
+          name: ghcp-mod-assessment-${{ inputs.target_repo }}
+          path: target-repo/ghcp-mod-assessment/
+          retention-days: 30
 
       # ── Commit results ─────────────────────────────────────────────────
       - name: Commit assessment results
