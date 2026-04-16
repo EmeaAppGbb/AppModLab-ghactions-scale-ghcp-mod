@@ -42,6 +42,11 @@ jobs:
   filter:
     name: "Filter repositories by language & blacklist"
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    outputs:
+      filtered_count: ${{ steps.set-outputs.outputs.filtered_count }}
+      filtered_list: ${{ steps.set-outputs.outputs.filtered_list }}
 
     env:
       ORG: ${{ vars.TARGET_ORG }}
@@ -118,6 +123,45 @@ jobs:
 
           FINAL_COUNT=$(jq length filtered.json)
           echo "✅ Final filtered count: $FINAL_COUNT"
+
+      # ── Show excluded repos ─────────────────────────────────────────────
+      - name: Show repos excluded by blacklist
+        run: |
+          if [[ -z "$BLACKLIST" ]]; then
+            echo "ℹ️  No blacklist configured — nothing excluded."
+          else
+            BLACKLIST_JSON=$(echo "$BLACKLIST" | tr ',' '\n' | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//' | jq -R . | jq -s .)
+
+            echo "🚫 Repos excluded by blacklist:"
+            jq --argjson bl "$BLACKLIST_JSON" \
+              '[ .[] | select(.name as $n | ($bl | index($n)) | not | not) ]
+               | sort_by(.name)
+               | .[] | "  - \(.name) (\(.primaryLanguage.name // "unknown"))"' \
+              -r lang_filtered.json
+
+            EXCLUDED_COUNT=$(jq --argjson bl "$BLACKLIST_JSON" \
+              '[ .[] | select(.name as $n | ($bl | index($n)) | not | not) ] | length' \
+              lang_filtered.json)
+            echo ""
+            echo "Total excluded: $EXCLUDED_COUNT repo(s)"
+          fi
+
+      # ── Set job outputs ─────────────────────────────────────────────────
+      - name: Set job outputs
+        id: set-outputs
+        run: |
+          FILTERED_COUNT=$(jq length filtered.json)
+          FILTERED_LIST=$(jq -c '[.[].name]' filtered.json)
+          echo "filtered_count=$FILTERED_COUNT" >> "$GITHUB_OUTPUT"
+          echo "filtered_list=$FILTERED_LIST" >> "$GITHUB_OUTPUT"
+
+      # ── Upload artifact ─────────────────────────────────────────────────
+      - name: Upload filtered.json artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: filtered-repos
+          path: filtered.json
+          retention-days: 7
 
       # ── Generate summary ───────────────────────────────────────────────
       - name: Generate summary table
