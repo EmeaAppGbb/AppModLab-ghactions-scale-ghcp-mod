@@ -1,0 +1,135 @@
+ÔùÅ Read 05-batch-assessment.yml
+  Ôöé .github\workflows\05-batch-assessment.yml
+  Ôöö 371 lines read
+
+ÔùÅ Rubber-duck Review workflow enhancement plan
+  Ôöé Read 04-create-pr.yml
+  Ôöé   Ôöé .github\workflows\04-create-pr.yml
+  Ôöé   Ôöö L1:240 (240 lines read)
+  Ôöö Read 01-discover-repos.yml
+      Ôöé .github\workflows\01-discover-repos.yml
+      Ôöö L130:220 (29 lines read)
+
+Good feedback from the rubber duck. Key points I'll address: unique artifact filenames, `if: always()` on artifact uploads, ETA accounting for parallelism, and guarding against zero artifacts in summary. I'll keep the concurrency check as a diagnostic-only warning since the user requested it.
+
+ÔùÅ Edit 05-batch-assessment.yml +24
+  Ôöö .github\workflows\05-batch-assessment.yml
+
+Now add the ETA step after the discovery summary, and update the summary step to include ETA:
+
+ÔùÅ Edit 05-batch-assessment.yml +23
+  Ôöö .github\workflows\05-batch-assessment.yml
+
+Now add timeout-minutes to the assess job and add artifact upload for status tracking:
+
+ÔùÅ Edit 05-batch-assessment.yml +1
+  Ôöö .github\workflows\05-batch-assessment.yml
+
+Add artifact upload at the end of the assess job:
+
+ÔùÅ Edit 05-batch-assessment.yml +19
+  Ôöö .github\workflows\05-batch-assessment.yml
+
+Now add timeout-minutes to create-prs and artifact upload:
+
+ÔùÅ Edit 05-batch-assessment.yml +1
+  Ôöö .github\workflows\05-batch-assessment.yml
+
+Add artifact upload at the end of the create-prs job (after the Job summary step):
+
+ÔùÅ Edit 05-batch-assessment.yml +32
+  Ôöö .github\workflows\05-batch-assessment.yml
+
+Now replace the summary job with the enhanced version:
+
+ÔùÅ Edit 05-batch-assessment.yml +156
+  Ôöö .github\workflows\05-batch-assessment.yml
+
+Now let me verify the final file looks correct:
+
+ÔùÅ Read 05-batch-assessment.yml
+  Ôöé .github\workflows\05-batch-assessment.yml
+  Ôöö 1 line read
+
+ÔùÅ Read 05-batch-assessment.yml
+  Ôöé .github\workflows\05-batch-assessment.yml
+  Ôöö L1:120 (120 lines read)
+
+ÔùÅ Read 05-batch-assessment.yml
+  Ôöé .github\workflows\05-batch-assessment.yml
+  Ôöö L240:360 (120 lines read)
+
+ÔùÅ Read 05-batch-assessment.yml
+  Ôöé .github\workflows\05-batch-assessment.yml
+  Ôöö L120:240 (121 lines read)
+
+ÔùÅ Read 05-batch-assessment.yml
+  Ôöé .github\workflows\05-batch-assessment.yml
+  Ôöö L360:500 (141 lines read)
+
+ÔùÅ Read 05-batch-assessment.yml
+  Ôöé .github\workflows\05-batch-assessment.yml
+  Ôöö L500:600 (101 lines read)
+
+ÔùÅ Read 05-batch-assessment.yml
+  Ôöé .github\workflows\05-batch-assessment.yml
+  Ôöö L600:640 (28 lines read)
+
+Now let me validate the YAML syntax:
+
+ÔùÅ Validate YAML syntax (shell)
+  Ôöé cd C:\code\gbb\labs\AppModLab-ghactions-scale-ghcp-mod && python -c "import
+  Ôöé yaml; yaml.safe_load(open('.github/workflows/05-batch-assessment.yml'));
+  Ôöé print('YAML is valid')"
+  Ôöö 2 lines...
+
+ÔùÅ Validate YAML with Node (shell)
+  Ôöé cd C:\code\gbb\labs\AppModLab-ghactions-scale-ghcp-mod && node -e "const
+  Ôöé yaml = require('yaml'); const fs = require('fs'); try {
+  Ôöé yaml.parse(fs.readFileSync('.github/workflows/05-batch-assessment.yml',
+  Ôöé 'utf8')); console.log('YAML is valid'); } catch(e) {
+  Ôöé console.error(e.message); process.exit(1); }"
+  Ôöö 21 lines...
+
+ÔùÅ Validate YAML with js-yaml (shell)
+  Ôöé cd C:\code\gbb\labs\AppModLab-ghactions-scale-ghcp-mod && node -e "const
+  Ôöé js_yaml = require('js-yaml'); const fs = require('fs'); try {
+  Ôöé js_yaml.load(fs.readFileSync('.github/workflows/05-batch-assessment.yml',
+  Ôöé 'utf8')); console.log('YAML is valid'); } catch(e) {
+  Ôöé console.error(e.message); process.exit(1); }"
+  Ôöö 2 lines...
+
+YAML is valid. Let me also do a quick sanity check on the key structural elements:
+
+ÔùÅ Search (grep)
+  Ôöé "timeout-minutes" (.github\workflows\05-batch-assessment.yml)
+  Ôöö 4 lines found
+
+Now let me commit:
+
+ÔùÅ Stage and check changes (shell)
+  Ôöé cd C:\code\gbb\labs\AppModLab-ghactions-scale-ghcp-mod && git add
+  Ôöé .github/workflows/05-batch-assessment.yml && git diff --cached --stat
+  Ôöö 3 lines...
+
+ÔùÅ Commit changes (shell)
+  Ôöé cd C:\code\gbb\labs\AppModLab-ghactions-scale-ghcp-mod && git commit -m
+  Ôöé "Enhance batch assessment workflow with timeouts, notifications, and
+  Ôöé improved summary
+  Ôöé
+  Ôöé - Add timeout-minutes to all jobs (15/30/10/5 for ÔÇª
+  Ôöö 19 lines...
+
+Done. Here's a summary of all enhancements made to `05-batch-assessment.yml`:
+
+1. **Timeout-minutes**: Added to all 4 jobs ÔÇö discover (15), assess (30), create-prs (10), summary (5)
+2. **Concurrency check**: New first step in discover job uses `gh run list` to detect other running/queued batch runs and emits a `::warning::` annotation
+3. **Estimated time**: New `eta` step calculates time based on repo count, max-parallel (3), and per-repo estimates (~8min assess + ~2min PR)
+4. **Artifact-based status tracking**: Both `assess` and `create-prs` matrix jobs upload per-repo JSON status artifacts (with `if: always()` to capture failures)
+5. **Enhanced summary**: Downloads artifacts, builds a per-repo results table with assessment status, PR status, and PR links
+6. **GitHub issue notification**: Creates a summary issue (non-dry-run only) with results table, PR links, job statuses, and workflow run link
+
+
+Changes   +256 -0
+Requests  3 Premium (5m 0s)
+Tokens    Ôåæ 867.1k ÔÇó Ôåô 13.2k ÔÇó 791.4k (cached) ÔÇó 2.1k (reasoning)
