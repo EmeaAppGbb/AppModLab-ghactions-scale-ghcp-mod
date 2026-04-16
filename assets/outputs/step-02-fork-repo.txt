@@ -1,0 +1,28 @@
+ÔùÅ List directory scripts
+  Ôöö 2 files found
+
+ÔùÅ Read README.md
+  Ôöö 1 line read
+
+ÔùÅ Read 01-setup-org.sh
+  Ôöé scripts\01-setup-org.sh
+  Ôöö 109 lines read
+
+ÔùÅ Create 02-fork-repo.sh +139
+  Ôöö scripts\02-fork-repo.sh
+
+Created `scripts/02-fork-repo.sh`. The script follows the conventions from `01-setup-org.sh` and:
+
+1. **Validates prerequisites** ÔÇö checks `gh` CLI is installed and authenticated
+2. **Accepts `ORG_NAME`** as the first positional argument with usage guidance
+3. **Verifies the org exists** via the GitHub API
+4. **Forks with `gh repo fork --org`** ÔÇö skips if the fork already exists
+5. **Clones the fork** ÔÇö skips if the directory already exists
+6. **Prints next steps** on completion
+
+Error handling includes `set -euo pipefail`, status checks at each step, and descriptive error messages with remediation hints.
+
+
+Changes   +139 -0
+Requests  3 Premium (55s)
+Tokens    Ôåæ 110.0k ÔÇó Ôåô 2.2k ÔÇó 88.3k (cached)
