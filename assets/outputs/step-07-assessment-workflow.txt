@@ -1,0 +1,72 @@
+ÔùÅ Read 03-run-assessment.yml
+  Ôöé .github\workflows\03-run-assessment.yml
+  Ôöö 222 lines read
+
+ÔùÅ Edit 03-run-assessment.yml +1
+  Ôöö .github\workflows\03-run-assessment.yml
+
+Now add retry logic to the assessment step:
+
+ÔùÅ Edit 03-run-assessment.yml +25 -8
+  Ôöö .github\workflows\03-run-assessment.yml
+
+Now add the validation step, job summary with file listing, and artifact upload after the assessment step but before the commit step:
+
+ÔùÅ Edit 03-run-assessment.yml +48
+  Ôöö .github\workflows\03-run-assessment.yml
+
+Let me verify the final file:
+
+ÔùÅ Read 03-run-assessment.yml
+  Ôöé .github\workflows\03-run-assessment.yml
+  Ôöö 288 lines read
+
+Now let me validate the YAML syntax:
+
+ÔùÅ Validate YAML syntax (shell)
+  Ôöé python -c "import yaml; yaml.safe_load(open(r'C:\code\gbb\labs\AppModLab-gha
+  Ôöé ctions-scale-ghcp-mod\.github\workflows\03-run-assessment.yml'));
+  Ôöé print('YAML is valid')"
+  Ôöö 2 lines...
+
+ÔùÅ Validate YAML with Node (shell)
+  Ôöé node -e "const fs=require('fs'); const yaml=require('yaml'); try { yaml.pars
+  Ôöé e(fs.readFileSync('.github/workflows/03-run-assessment.yml','utf8'));
+  Ôöé console.log('YAML valid') } catch(e) { console.error(e.message) }"
+  Ôöö 21 lines...
+
+ÔùÅ Validate YAML with js-yaml (shell)
+  Ôöé node -e "const fs=require('fs'); const
+  Ôöé f=fs.readFileSync('.github/workflows/03-run-assessment.yml','utf8'); const
+  Ôöé js=require('js-yaml'); try { js.load(f); console.log('YAML valid') }
+  Ôöé catch(e) { console.error(e.message) }"
+  Ôöö 2 lines...
+
+YAML is valid. Now let me commit:
+
+ÔùÅ Check git diff (shell)
+  Ôöé cd C:\code\gbb\labs\AppModLab-ghactions-scale-ghcp-mod && git --no-pager
+  Ôöé diff --stat
+  Ôöö 3 lines...
+
+ÔùÅ Commit workflow changes (shell)
+  Ôöé cd C:\code\gbb\labs\AppModLab-ghactions-scale-ghcp-mod && git add
+  Ôöé .github/workflows/03-run-assessment.yml && git commit -m "Enhance
+  Ôöé 03-run-assessment workflow with timeout, retry, validation, artifact
+  Ôöé upload, and file listing summaryÔÇª
+  Ôöö 18 lines...
+
+All 5 enhancements applied to `03-run-assessment.yml`:
+
+1. **`timeout-minutes: 30`** ÔÇö added to the `assess` job (line 40)
+2. **Job summary with file listing** ÔÇö new step writes a markdown table of assessment files to `$GITHUB_STEP_SUMMARY` (lines 202ÔÇô217)
+3. **Artifact upload** ÔÇö uses `actions/upload-artifact@v4` to upload `ghcp-mod-assessment/` with 30-day retention (lines 219ÔÇô226)
+4. **Retry logic** ÔÇö 3 attempts with exponential backoff (10s, 20s) around the `modernize assess` command (lines 151ÔÇô178)
+5. **Validation step** ÔÇö checks output directory exists and contains at least one file (lines 180ÔÇô200)
+
+All existing functionality (dry-run, clone, branch, commit, push, final summary) is preserved.
+
+
+Changes   +74 -8
+Requests  3 Premium (1m 33s)
+Tokens    Ôåæ 345.0k ÔÇó Ôåô 2.8k ÔÇó 313.9k (cached)
