@@ -1,0 +1,89 @@
+ÔùÅ List directory .
+  Ôöö 7 files found
+
+ÔùÅ List directory .github\workflows
+  Ôöö 6 files found
+
+ÔùÅ Read 03-run-assessment.yml
+  Ôöé .github\workflows\03-run-assessment.yml
+  Ôöö 288 lines read
+
+ÔùÅ Read 04-create-pr.yml
+  Ôöé .github\workflows\04-create-pr.yml
+  Ôöö 183 lines read
+
+ÔùÅ Rubber-duck Review workflow enhancement plan
+  Ôöé Search (grep)
+  Ôöé   Ôöé "ghcp-mod-assessment|REVIEWERS|gh pr comment|gh pr
+  Ôöé   Ôöé edit|GITHUB_OUTPUT|job.summary|timeout-minutes"
+  Ôöé   Ôöö 74 lines found
+  Ôöö Read 05-batch-assessment.yml
+      Ôöé .github\workflows\05-batch-assessment.yml
+      Ôöö L250:350 (101 lines read)
+
+Good critique. Key takeaways I'm adopting: better branch-check error differentiation, multiline output syntax for excerpt, unified PR number for all post-creation steps, per-reviewer error handling, and explicit cross-repo link in comments. Let me implement.
+
+ÔùÅ Edit 04-create-pr.yml +274 -22
+  Ôöö .github\workflows\04-create-pr.yml
+
+Now let me validate the YAML syntax:
+
+ÔùÅ Validate YAML syntax (shell)
+  Ôöé cd C:\code\gbb\labs\AppModLab-ghactions-scale-ghcp-mod && python -c "import
+  Ôöé yaml; yaml.safe_load(open('.github/workflows/04-create-pr.yml'));
+  Ôöé print('YAML is valid')"
+  Ôöö 2 lines...
+
+ÔùÅ Validate YAML with Node.js (shell)
+  Ôöé cd C:\code\gbb\labs\AppModLab-ghactions-scale-ghcp-mod && node -e "const
+  Ôöé yaml = require('yaml'); const fs = require('fs'); try {
+  Ôöé yaml.parse(fs.readFileSync('.github/workflows/04-create-pr.yml', 'utf8'));
+  Ôöé console.log('YAML is valid'); } catch(e) { console.error('YAML error:',
+  Ôöé e.message); process.exit(1); }"
+  Ôöö 21 lines...
+
+ÔùÅ Validate YAML with js-yaml (shell)
+  Ôöé cd C:\code\gbb\labs\AppModLab-ghactions-scale-ghcp-mod && node -e "const
+  Ôöé js_yaml = require('js-yaml'); const fs = require('fs'); try {
+  Ôöé js_yaml.load(fs.readFileSync('.github/workflows/04-create-pr.yml', 'utf8'));
+  Ôöé console.log('YAML is valid'); } catch(e) { console.error('YAML error:',
+  Ôöé e.message); process.exit(1); }"
+  Ôöö 2 lines...
+
+Let me also verify the final file looks correct:
+
+ÔùÅ Read 04-create-pr.yml
+  Ôöé .github\workflows\04-create-pr.yml
+  Ôöö 435 lines read
+
+Now let me commit:
+
+ÔùÅ Check git diff stats (shell)
+  Ôöé cd C:\code\gbb\labs\AppModLab-ghactions-scale-ghcp-mod && git --no-pager
+  Ôöé diff --stat
+  Ôöö 3 lines...
+
+ÔùÅ Commit workflow changes (shell)
+  Ôöé cd C:\code\gbb\labs\AppModLab-ghactions-scale-ghcp-mod && git add
+  Ôöé .github/workflows/04-create-pr.yml && git commit -m "Enhance 04-create-pr
+  Ôöé workflow with summary excerpt, reviewers, comments, and error handling
+  Ôöé
+  Ôöé - Add timeout-minutes: 10 to the jobÔÇª
+  Ôöö 21 lines...
+
+Done. Here's a summary of all 5 enhancements:
+
+1. **`timeout-minutes: 10`** ÔÇö Added to the job to prevent runaway executions.
+
+2. **Assessment summary excerpt** ÔÇö New `Fetch assessment summary` step searches for markdown files (priority list: `summary.md`, `report.md`, etc.) via the GitHub Contents API, base64-decodes up to 30 lines, and injects it into the PR body in a collapsible `<details>` section. Uses multiline `GITHUB_OUTPUT` syntax for safety.
+
+3. **Optional reviewers** ÔÇö New `Assign reviewers` step parses the `REVIEWERS` repo variable (comma-separated), adds each reviewer individually with per-user error handling, and warns on failures without blocking the workflow.
+
+4. **Workflow run comment** ÔÇö Posts a comment on every PR (new or existing) with a link to the Actions run, automation repo, actor, and timestamp. Explicitly notes the link is cross-repo.
+
+5. **Error handling** ÔÇö Branch verification now distinguishes 401/403 (auth), 404-repo vs 404-branch, and unexpected errors with targeted troubleshooting hints. PR creation has inline failure guidance. A final `if: failure()` step outputs a troubleshooting table in the job summary covering all common failure modes.
+
+
+Changes   +274 -22
+Requests  3 Premium (4m 52s)
+Tokens    Ôåæ 491.5k ÔÇó Ôåô 13.0k ÔÇó 429.2k (cached) ÔÇó 2.1k (reasoning)
