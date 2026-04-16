@@ -1,0 +1,36 @@
+ÔùÅ Read README.md
+  Ôöö 1 line read
+
+ÔùÅ List directory scripts
+  Ôöö 1 file found
+
+ÔùÅ Read README.md
+  Ôöö L1:50 (50 lines read)
+
+ÔùÅ Create 01-setup-org.sh +110
+  Ôöö scripts\01-setup-org.sh
+
+ÔùÅ Validate shell script syntax (shell)
+  Ôöé cd C:\code\gbb\labs\AppModLab-ghactions-scale-ghcp-mod && bash -c "bash -n
+  Ôöé scripts/01-setup-org.sh && echo 'Syntax OK'"
+  Ôöö 2 lines...
+
+ÔùÅ Validate shell script syntax via Git bash (shell)
+  Ôöé & "C:\Program Files\Git\bin\bash.exe" -n "C:\code\gbb\labs\AppModLab-ghactio
+  Ôöé ns-scale-ghcp-mod\scripts\01-setup-org.sh" 2>&1; if ($LASTEXITCODE -eq 0) {
+  Ôöé "Syntax OK" }
+  Ôöö 2 lines...
+
+Script created at `scripts/01-setup-org.sh` and passes syntax validation. It:
+
+1. **Checks `gh` CLI** is installed, with install links if missing
+2. **Checks `gh` auth** status
+3. **Prints step-by-step instructions** for creating a GitHub org
+4. **Accepts `ORG_NAME`** as the first argument (exits with usage info if missing)
+5. **Verifies the org** exists via `gh api orgs/<name>` and reports the HTTP status
+6. Uses colour-coded output helpers and `set -euo pipefail` for robustness
+
+
+Changes   +110 -0
+Requests  3 Premium (55s)
+Tokens    Ôåæ 175.7k ÔÇó Ôåô 2.0k ÔÇó 125.3k (cached)
