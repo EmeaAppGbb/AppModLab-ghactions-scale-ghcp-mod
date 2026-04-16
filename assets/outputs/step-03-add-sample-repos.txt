@@ -1,0 +1,30 @@
+ÔùÅ List directory scripts
+  Ôöö 3 files found
+
+ÔùÅ Read 01-setup-org.sh
+  Ôöé scripts\01-setup-org.sh
+  Ôöö 109 lines read
+
+ÔùÅ Read 02-fork-repo.sh
+  Ôöé scripts\02-fork-repo.sh
+  Ôöö 138 lines read
+
+Now I have the style conventions. Let me create the script.
+
+ÔùÅ Create 03-add-sample-repos.sh +184
+  Ôöö scripts\03-add-sample-repos.sh
+
+Script created at `scripts/03-add-sample-repos.sh`. It follows the same style as `01-setup-org.sh` and `02-fork-repo.sh`:
+
+- **Colour helpers & info/success/warn/error** functions
+- **Step 1ÔÇô2**: Checks `gh` is installed and authenticated
+- **Step 3**: Accepts `ORG_NAME` as `$1` (with usage error)
+- **Step 4**: Verifies the org exists via API
+- **Step 5**: Loops over both source repos, skips if fork already exists, otherwise forks with `--clone=false`
+- **Step 6**: Verifies each fork is accessible
+- **Step 7**: Prints a summary with counts and GitHub links, exits non-zero if any failed
+
+
+Changes   +184 -0
+Requests  3 Premium (45s)
+Tokens    Ôåæ 118.1k ÔÇó Ôåô 2.7k ÔÇó 91.9k (cached)
